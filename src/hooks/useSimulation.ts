@@ -26,6 +26,8 @@ export function useSimulation() {
   const [schdRatio, setSchdRatio] = useState<number>(DEFAULTS.SCHD_RATIO);
   const [totalInvestment, setTotalInvestment] = useState<number>(DEFAULTS.TOTAL_INVESTMENT);
   const [schdGrowthRate, setSchdGrowthRate] = useState<number>(DEFAULTS.SCHD_GROWTH_RATE);
+  const [schdDividendYield, setSchdDividendYield] = useState<number>(DEFAULTS.SCHD_DIVIDEND_YIELD);
+  const [jepiDividendYield, setJepiDividendYield] = useState<number>(DEFAULTS.JEPI_DIVIDEND_YIELD);
   const [inflationRate, setInflationRate] = useState<number>(DEFAULTS.INFLATION_RATE);
   const [monthlyExpense, setMonthlyExpense] = useState<number>(DEFAULTS.MONTHLY_EXPENSE);
   const [startAge, setStartAge] = useState<number>(DEFAULTS.START_AGE);
@@ -45,6 +47,8 @@ export function useSimulation() {
         schdRatio,
         totalInvestment,
         schdGrowthRate,
+        schdDividendYield,
+        jepiDividendYield,
         inflationRate,
         monthlyExpense,
         startAge,
@@ -55,6 +59,8 @@ export function useSimulation() {
       schdRatio,
       totalInvestment,
       schdGrowthRate,
+      schdDividendYield,
+      jepiDividendYield,
       inflationRate,
       monthlyExpense,
       startAge,
@@ -81,6 +87,10 @@ export function useSimulation() {
     setTotalInvestment,
     schdGrowthRate,
     setSchdGrowthRate,
+    schdDividendYield,
+    setSchdDividendYield,
+    jepiDividendYield,
+    setJepiDividendYield,
     inflationRate,
     setInflationRate,
     monthlyExpense,

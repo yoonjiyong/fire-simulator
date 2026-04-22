@@ -51,6 +51,28 @@ export function ControlPanel({ state }: ControlPanelProps) {
           hint="JEPI 0% 고정"
         />
         <Slider
+          label="SCHD 배당률"
+          value={state.schdDividendYield}
+          min={LIMITS.SCHD_DIVIDEND_YIELD.min}
+          max={LIMITS.SCHD_DIVIDEND_YIELD.max}
+          step={LIMITS.SCHD_DIVIDEND_YIELD.step}
+          onChange={state.setSchdDividendYield}
+          formatValue={(v) => formatPercent(v, 2)}
+          accent="var(--color-schd)"
+          hint="기본 3.5%"
+        />
+        <Slider
+          label="JEPI 배당률"
+          value={state.jepiDividendYield}
+          min={LIMITS.JEPI_DIVIDEND_YIELD.min}
+          max={LIMITS.JEPI_DIVIDEND_YIELD.max}
+          step={LIMITS.JEPI_DIVIDEND_YIELD.step}
+          onChange={state.setJepiDividendYield}
+          formatValue={(v) => formatPercent(v, 2)}
+          accent="var(--color-jepi)"
+          hint="기본 7.5%"
+        />
+        <Slider
           label="연 인플레이션"
           value={state.inflationRate}
           min={LIMITS.INFLATION_RATE.min}

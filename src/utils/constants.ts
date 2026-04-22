@@ -20,6 +20,8 @@ export const LIMITS = {
   SCHD_RATIO: { min: 0, max: 100, step: 5 },
   TOTAL_INVESTMENT: { min: 10000, max: 100000, step: 5000 },
   SCHD_GROWTH_RATE: { min: 0.02, max: 0.1, step: 0.005 },
+  SCHD_DIVIDEND_YIELD: { min: 0.01, max: 0.08, step: 0.001 },
+  JEPI_DIVIDEND_YIELD: { min: 0.03, max: 0.12, step: 0.001 },
   INFLATION_RATE: { min: 0.01, max: 0.05, step: 0.005 },
   MONTHLY_EXPENSE: { min: 50, max: 300, step: 10 },
   START_AGE: { min: 30, max: 60, step: 1 },
