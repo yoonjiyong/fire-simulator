@@ -66,13 +66,19 @@ export function GiftTaxCalculator() {
       </header>
 
       {/* 결과 하이라이트 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <ResultCard label="증여재산가액" value={formatManwonDetail(amount)} />
         <ResultCard label="과세표준" value={formatManwonDetail(result.taxableBase)} />
         <ResultCard
           label="최종 납부세액"
           value={formatManwonDetail(result.finalTax)}
           accent="var(--color-danger)"
+          highlight
+        />
+        <ResultCard
+          label="세후 수령액"
+          value={formatManwonDetail(amount - result.finalTax)}
+          accent="var(--color-success)"
           highlight
         />
         <ResultCard
@@ -219,6 +225,12 @@ export function GiftTaxCalculator() {
                 emphasize
                 accent="var(--color-danger)"
               />
+              <CalcRow
+                label="⑩ 세후 수증자 수령액"
+                value={formatManwonDetail(result.amount - result.finalTax)}
+                emphasize
+                accent="var(--color-success)"
+              />
             </tbody>
           </table>
         </div>
@@ -242,6 +254,7 @@ export function GiftTaxCalculator() {
                 <th className="px-3 py-2 text-right">공제</th>
                 <th className="px-3 py-2 text-right">과세표준</th>
                 <th className="px-3 py-2 text-right">납부세액</th>
+                <th className="px-3 py-2 text-right">세후 수령액</th>
                 <th className="px-3 py-2 text-right">실효세율</th>
               </tr>
             </thead>
@@ -279,8 +292,17 @@ export function GiftTaxCalculator() {
                     <td className="px-3 py-2 text-right tabular-nums">
                       {formatManwonDetail(row.result.taxableBase)}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                    <td
+                      className="px-3 py-2 text-right tabular-nums font-semibold"
+                      style={{ color: 'var(--color-danger)' }}
+                    >
                       {formatManwonDetail(row.result.finalTax)}
+                    </td>
+                    <td
+                      className="px-3 py-2 text-right tabular-nums font-bold"
+                      style={{ color: 'var(--color-success)' }}
+                    >
+                      {formatManwonDetail(amount - row.result.finalTax)}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums muted">
                       {amount > 0 ? formatPercent(row.result.effectiveRate, 2) : '—'}
