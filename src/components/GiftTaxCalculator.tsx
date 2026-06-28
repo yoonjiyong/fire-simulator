@@ -10,7 +10,7 @@ import {
 export function GiftTaxCalculator() {
   const [amount, setAmount] = useState<number>(40000);
   const [previousGifts, setPreviousGifts] = useState<number>(0);
-  const [relationship, setRelationship] = useState<Relationship>('adultChild');
+  const [relationship, setRelationship] = useState<Relationship>('other');
   const [isMarriageOrBirth, setIsMarriageOrBirth] = useState(false);
   const [isGenerationSkip, setIsGenerationSkip] = useState(false);
   const [isMinorOver20eok, setIsMinorOver20eok] = useState(false);

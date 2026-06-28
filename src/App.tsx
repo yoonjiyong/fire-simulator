@@ -19,8 +19,12 @@ export default function App() {
           rightSlot={<ThemeToggle theme={theme} onChange={setTheme} />}
         />
 
-        {view === 'fire' && <FireCalculator theme={theme} />}
-        {view === 'gift' && <GiftTaxCalculator />}
+        <div className={view === 'fire' ? undefined : 'hidden'}>
+          <FireCalculator theme={theme} />
+        </div>
+        <div className={view === 'gift' ? undefined : 'hidden'}>
+          <GiftTaxCalculator />
+        </div>
 
         <Footer />
       </div>
