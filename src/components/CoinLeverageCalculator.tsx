@@ -30,6 +30,7 @@ export function CoinLeverageCalculator() {
   const [initialRatio, setInitialRatio] = useState(10);
 
   const [extraEntries, setExtraEntries] = useState<LadderEntryInput[]>([]);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const idCounter = useRef(1);
 
   const initialRatioClamped = clamp(initialRatio, 1, 40);
@@ -107,6 +108,10 @@ export function CoinLeverageCalculator() {
     setExtraEntries((prev) => prev.filter((e) => e.id !== id));
   };
 
+  const resetEntries = () => {
+    setExtraEntries([]);
+  };
+
   return (
     <div className="space-y-6">
       <header className="space-y-2">
@@ -158,6 +163,21 @@ export function CoinLeverageCalculator() {
               step={1}
               hint={`${leverage}x`}
             />
+            <MoneyInput
+              label="투입 금액 (USD)"
+              value={initialAmount}
+              onChange={setInitialAmount}
+              hint={`비율 변경 시 자동 재계산 (직접 수정 가능) · 현재 총자금의 ${initialAmountRatioPercent.toFixed(1)}%`}
+            />
+            <NumberInput
+              label="처음 들어가는 비율 (1~40등분)"
+              value={initialRatio}
+              onChange={setInitialRatio}
+              min={1}
+              max={40}
+              step={1}
+              hint={`1/${initialRatioClamped} = ${formatUSD(totalCapital / initialRatioClamped)} (총자금의 ${initialRatioPercent.toFixed(1)}%)`}
+            />
             <NumberInput
               label="유지증거금률 (%)"
               value={maintenanceMarginPct}
@@ -173,21 +193,6 @@ export function CoinLeverageCalculator() {
               value={coinPrice}
               onChange={setCoinPrice}
               hint="최초 진입 시점의 실제 코인 시장가 (평단가·청산가 계산에 사용)"
-            />
-            <NumberInput
-              label="처음 들어가는 비율 (1~40등분)"
-              value={initialRatio}
-              onChange={setInitialRatio}
-              min={1}
-              max={40}
-              step={1}
-              hint={`1/${initialRatioClamped} = ${formatUSD(totalCapital / initialRatioClamped)} (총자금의 ${initialRatioPercent.toFixed(1)}%)`}
-            />
-            <MoneyInput
-              label="투입 금액 (USD)"
-              value={initialAmount}
-              onChange={setInitialAmount}
-              hint={`비율 변경 시 자동 재계산 (직접 수정 가능) · 현재 총자금의 ${initialAmountRatioPercent.toFixed(1)}%`}
             />
           </div>
   
@@ -281,19 +286,34 @@ export function CoinLeverageCalculator() {
       <div className="card-lg space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold">물타기 단계</h2>
-          <button
-            type="button"
-            onClick={addEntry}
-            disabled={remainingRatio <= 0}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{
-              borderColor: 'var(--color-schd)',
-              color: 'var(--color-schd)',
-              backgroundColor: 'color-mix(in srgb, var(--color-schd) 8%, transparent)',
-            }}
-          >
-            + 단계 추가
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setShowResetConfirm(true)}
+              disabled={extraEntries.length === 0}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{
+                borderColor: 'var(--color-danger)',
+                color: 'var(--color-danger)',
+                backgroundColor: 'color-mix(in srgb, var(--color-danger) 8%, transparent)',
+              }}
+            >
+              초기화
+            </button>
+            <button
+              type="button"
+              onClick={addEntry}
+              disabled={remainingRatio <= 0}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{
+                borderColor: 'var(--color-schd)',
+                color: 'var(--color-schd)',
+                backgroundColor: 'color-mix(in srgb, var(--color-schd) 8%, transparent)',
+              }}
+            >
+              + 단계 추가
+            </button>
+          </div>
         </div>
 
         <div
@@ -417,6 +437,48 @@ export function CoinLeverageCalculator() {
         쓰인다고 가정하며(계좌 내 다른 동시 포지션 없음 전제), 수수료·펀딩비·거래소별 유지증거금 구간 차등·슬리피지는
         반영되지 않아 실제 청산가는 거래소 화면과 다를 수 있습니다. 투자 판단은 본인 책임하에 신중히 결정하세요.
       </div>
+
+      {showResetConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ backgroundColor: 'color-mix(in srgb, black 50%, transparent)' }}
+          onClick={() => setShowResetConfirm(false)}
+        >
+          <div
+            className="card-lg max-w-sm w-full space-y-4"
+            style={{ backgroundColor: 'var(--color-surface)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="space-y-1.5">
+              <h3 className="text-base font-bold">물타기 단계를 초기화할까요?</h3>
+              <p className="text-sm muted">
+                추가한 물타기 단계 {extraEntries.length}개가 모두 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                className="px-3 py-1.5 rounded-lg text-sm font-semibold border transition-colors"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  resetEntries();
+                  setShowResetConfirm(false);
+                }}
+                className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors"
+                style={{ backgroundColor: 'var(--color-danger)' }}
+              >
+                초기화
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
