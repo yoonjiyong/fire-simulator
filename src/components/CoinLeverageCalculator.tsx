@@ -369,7 +369,7 @@ export function CoinLeverageCalculator() {
               <tr>
                 <th className="px-3 py-2 text-left whitespace-nowrap">변동률</th>
                 <th className="px-3 py-2 text-right whitespace-nowrap">가격 (USD)</th>
-                <th className="px-3 py-2 text-right whitespace-nowrap">가격 (KRW)</th>
+                <th className="px-3 py-2 text-right whitespace-nowrap">포지션 가치 (USD)</th>
                 <th className="px-3 py-2 text-right whitespace-nowrap">수익 (USD)</th>
                 <th className="px-3 py-2 text-right whitespace-nowrap">수익 (KRW)</th>
                 <th className="px-3 py-2 text-right whitespace-nowrap">ROE</th>
@@ -383,7 +383,7 @@ export function CoinLeverageCalculator() {
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{formatUSD(row.price)}</td>
                   <td className="px-3 py-2 text-right tabular-nums muted whitespace-nowrap">
-                    {formatKRW(row.price * exchangeRate)}
+                    {formatUSD(current.cumMargin * leverage * (1 + row.changePct))}
                   </td>
                   <td
                     className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap"
