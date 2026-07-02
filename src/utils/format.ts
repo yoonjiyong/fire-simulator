@@ -28,3 +28,18 @@ export function formatPercent(value: number, digits = 1): string {
 export function formatInt(value: number): string {
   return Math.round(value).toLocaleString('ko-KR');
 }
+
+export function formatUSD(value: number): string {
+  const sign = value < 0 ? '-' : '';
+  return `${sign}$${Math.abs(value).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+}
+
+export function formatKRW(value: number): string {
+  const sign = value < 0 ? '-' : '';
+  return `${sign}₩${Math.abs(Math.round(value)).toLocaleString('ko-KR')}`;
+}
+
+export function formatSignedPercent(value: number, digits = 1): string {
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${(value * 100).toFixed(digits)}%`;
+}

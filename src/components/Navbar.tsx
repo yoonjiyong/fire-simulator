@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type ViewType = 'fire' | 'gift';
+export type ViewType = 'fire' | 'gift' | 'coin';
 
 interface NavbarProps {
   view: ViewType;
@@ -11,6 +11,7 @@ interface NavbarProps {
 const VIEWS: Array<{ key: ViewType; label: string; icon: string }> = [
   { key: 'fire', label: 'FIRE Calculator', icon: '📈' },
   { key: 'gift', label: '증여세 계산기', icon: '🎁' },
+  { key: 'coin', label: '코인 레버리지 계산기', icon: '🪙' },
 ];
 
 export function Navbar({ view, onChange, rightSlot }: NavbarProps) {
