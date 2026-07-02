@@ -28,6 +28,7 @@ export function CoinLeverageCalculator() {
   const [coinPrice, setCoinPrice] = useState(100);
   const [initialAmount, setInitialAmount] = useState(2000);
   const [initialRatio, setInitialRatio] = useState(10);
+  const [targetPrice, setTargetPrice] = useState(100);
 
   const [extraEntries, setExtraEntries] = useState<LadderEntryInput[]>([]);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -80,6 +81,15 @@ export function CoinLeverageCalculator() {
         ? (current.avgPrice - current.liqPrice) / current.avgPrice
         : (current.liqPrice - current.avgPrice) / current.avgPrice
       : 0;
+
+  const targetChangePct = current.avgPrice > 0 ? (targetPrice - current.avgPrice) / current.avgPrice : 0;
+  const targetPnl =
+    side === 'long'
+      ? current.cumQty * (targetPrice - current.avgPrice)
+      : current.cumQty * (current.avgPrice - targetPrice);
+  const targetRoe = current.cumMargin > 0 ? targetPnl / current.cumMargin : 0;
+  const targetIsLiquidated =
+    current.avgPrice > 0 && (side === 'long' ? targetPrice <= current.liqPrice : targetPrice >= current.liqPrice);
 
   const pnlRows = useMemo(
     () => buildPnlTable(current.avgPrice, current.cumQty, current.cumMargin, side, DEFAULT_PNL_CHANGES),
@@ -279,6 +289,42 @@ export function CoinLeverageCalculator() {
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      {/* 목표가 손익 계산 */}
+      <div className="card-lg space-y-4">
+        <h2 className="text-base font-bold">목표가 손익 계산</h2>
+        <p className="text-xs muted">
+          현재(또는 목표) 가격을 입력하면 평단가 {formatUSD(current.avgPrice)} 대비 변동률과 손익을 계산합니다.
+        </p>
+        <MoneyInput
+          label="현재 가격 (USD)"
+          value={targetPrice}
+          onChange={setTargetPrice}
+          hint={targetIsLiquidated ? '이 가격에서는 이미 청산됩니다' : undefined}
+        />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <ResultCard
+            label="변동률"
+            value={formatSignedPercent(targetChangePct)}
+            accent={targetChangePct >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
+          />
+          <ResultCard
+            label="손익 (USD)"
+            value={formatUSD(targetPnl)}
+            accent={targetPnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
+          />
+          <ResultCard
+            label="손익 (KRW)"
+            value={formatKRW(targetPnl * exchangeRate)}
+            accent={targetPnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
+          />
+          <ResultCard
+            label="ROE"
+            value={formatSignedPercent(targetRoe)}
+            accent={targetRoe >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
+          />
         </div>
       </div>
 
