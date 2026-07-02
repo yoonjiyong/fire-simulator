@@ -38,9 +38,11 @@ export function CoinLeverageCalculator() {
   const initialRatioPercent = 100 / initialRatioClamped;
 
   const prevRatioRef = useRef(initialRatioClamped);
+  const prevTotalCapitalRef = useRef(totalCapital);
   useEffect(() => {
-    if (prevRatioRef.current !== initialRatioClamped) {
+    if (prevRatioRef.current !== initialRatioClamped || prevTotalCapitalRef.current !== totalCapital) {
       prevRatioRef.current = initialRatioClamped;
+      prevTotalCapitalRef.current = totalCapital;
       setInitialAmount(Math.round((totalCapital / initialRatioClamped) * 100) / 100);
     }
   }, [initialRatioClamped, totalCapital]);
@@ -243,7 +245,7 @@ export function CoinLeverageCalculator() {
             참고하세요.
           </p>
           <div
-            className="overflow-x-auto rounded-lg border max-h-96 overflow-y-auto"
+            className="overflow-x-auto rounded-lg border max-h-36 overflow-y-auto"
             style={{ borderColor: 'var(--color-border)' }}
           >
             <table className="w-full text-sm">
@@ -304,26 +306,30 @@ export function CoinLeverageCalculator() {
           onChange={setTargetPrice}
           hint={targetIsLiquidated ? '이 가격에서는 이미 청산됩니다' : undefined}
         />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <ResultCard
             label="변동률"
             value={formatSignedPercent(targetChangePct)}
             accent={targetChangePct >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
-          />
-          <ResultCard
-            label="손익 (USD)"
-            value={formatUSD(targetPnl)}
-            accent={targetPnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
-          />
-          <ResultCard
-            label="손익 (KRW)"
-            value={formatKRW(targetPnl * exchangeRate)}
-            accent={targetPnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
+            compact
           />
           <ResultCard
             label="ROE"
             value={formatSignedPercent(targetRoe)}
             accent={targetRoe >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
+            compact
+          />
+          <ResultCard
+            label="손익 (USD)"
+            value={formatUSD(targetPnl)}
+            accent={targetPnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
+            compact
+          />
+          <ResultCard
+            label="손익 (KRW)"
+            value={formatKRW(targetPnl * exchangeRate)}
+            accent={targetPnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
+            compact
           />
         </div>
         </div>
@@ -536,15 +542,17 @@ function ResultCard({
   value,
   accent,
   highlight,
+  compact,
 }: {
   label: string;
   value: string;
   accent?: string;
   highlight?: boolean;
+  compact?: boolean;
 }) {
   return (
     <div
-      className="card"
+      className="card min-w-0"
       style={
         highlight
           ? {
@@ -554,8 +562,11 @@ function ResultCard({
           : undefined
       }
     >
-      <div className="text-xs muted mb-1">{label}</div>
-      <div className="text-lg md:text-xl font-bold tabular-nums" style={{ color: accent }}>
+      <div className="text-xs muted mb-1 truncate">{label}</div>
+      <div
+        className={`font-bold tabular-nums break-words ${compact ? 'text-base md:text-lg' : 'text-lg md:text-xl'}`}
+        style={{ color: accent }}
+      >
         {value}
       </div>
     </div>
