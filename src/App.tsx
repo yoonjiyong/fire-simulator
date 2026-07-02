@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CoinLeverageCalculator } from './components/CoinLeverageCalculator';
 import { FireCalculator } from './components/FireCalculator';
 import { Footer } from './components/Footer';
 import { GiftTaxCalculator } from './components/GiftTaxCalculator';
@@ -24,6 +25,9 @@ export default function App() {
         </div>
         <div className={view === 'gift' ? undefined : 'hidden'}>
           <GiftTaxCalculator />
+        </div>
+        <div className={view === 'coin' ? undefined : 'hidden'}>
+          <CoinLeverageCalculator />
         </div>
 
         <Footer />
