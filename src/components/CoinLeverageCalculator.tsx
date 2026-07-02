@@ -257,7 +257,7 @@ export function CoinLeverageCalculator() {
             참고하세요.
           </p>
           <div
-            className="overflow-x-auto rounded-lg border max-h-36 overflow-y-auto"
+            className="overflow-x-auto rounded-lg border max-h-96 overflow-y-auto"
             style={{ borderColor: 'var(--color-border)' }}
           >
             <table className="w-full text-sm">
