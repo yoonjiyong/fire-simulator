@@ -233,6 +233,7 @@ export function CoinLeverageCalculator() {
           </div>
         </div>
   
+        <div className="space-y-4">
         {/* 수익 시뮬레이션 */}
         <div className="card-lg">
           <h2 className="text-base font-bold mb-1">평단가 기준 수익 시뮬레이션</h2>
@@ -290,10 +291,9 @@ export function CoinLeverageCalculator() {
             </table>
           </div>
         </div>
-      </div>
 
-      {/* 목표가 손익 계산 */}
-      <div className="card-lg space-y-4">
+        {/* 목표가 손익 계산 */}
+        <div className="card-lg space-y-4">
         <h2 className="text-base font-bold">목표가 손익 계산</h2>
         <p className="text-xs muted">
           현재(또는 목표) 가격을 입력하면 평단가 {formatUSD(current.avgPrice)} 대비 변동률과 손익을 계산합니다.
@@ -325,6 +325,8 @@ export function CoinLeverageCalculator() {
             value={formatSignedPercent(targetRoe)}
             accent={targetRoe >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
           />
+        </div>
+        </div>
         </div>
       </div>
 
