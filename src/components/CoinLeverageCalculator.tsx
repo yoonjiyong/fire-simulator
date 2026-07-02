@@ -1,9 +1,22 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LadderEntryInput, PositionSide } from '../types/coin';
 import { DEFAULT_PNL_CHANGES, buildLadder, buildPnlTable } from '../utils/coinLeverage';
 import { formatKRW, formatSignedPercent, formatUSD } from '../utils/format';
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
+
+function formatMoneyDisplay(value: number): string {
+  if (!Number.isFinite(value)) return '';
+  const sign = value < 0 ? '-' : '';
+  const [intPart, decPart] = Math.abs(value).toString().split('.');
+  const grouped = Number(intPart).toLocaleString('en-US');
+  return decPart ? `${sign}${grouped}.${decPart}` : `${sign}${grouped}`;
+}
+
+function parseMoneyInput(text: string): number {
+  const n = Number(text.replace(/,/g, '').trim());
+  return Number.isFinite(n) ? n : 0;
+}
 
 export function CoinLeverageCalculator() {
   const [totalCapital, setTotalCapital] = useState(20000);
@@ -115,12 +128,10 @@ export function CoinLeverageCalculator() {
       <div className="card-lg space-y-5">
         <h2 className="text-base font-bold">기본 설정</h2>
         <div className="grid md:grid-cols-2 gap-x-6 gap-y-5">
-          <NumberInput
+          <MoneyInput
             label="총 자금 (USD)"
             value={totalCapital}
-            onChange={(n) => setTotalCapital(Math.max(0, n))}
-            min={0}
-            step={100}
+            onChange={setTotalCapital}
             hint={formatKRW(totalCapital * exchangeRate)}
           />
           <NumberInput
@@ -141,13 +152,7 @@ export function CoinLeverageCalculator() {
             step={0.1}
             hint="거래소·종목별로 상이 (기본 0.5%)"
           />
-          <NumberInput
-            label="환율 (KRW/USD)"
-            value={exchangeRate}
-            onChange={(n) => setExchangeRate(Math.max(0, n))}
-            min={0}
-            step={10}
-          />
+          <MoneyInput label="환율 (KRW/USD)" value={exchangeRate} onChange={setExchangeRate} />
         </div>
 
         <div>
@@ -181,13 +186,7 @@ export function CoinLeverageCalculator() {
       <div className="card-lg space-y-5">
         <h2 className="text-base font-bold">최초 진입</h2>
         <div className="grid md:grid-cols-2 gap-x-6 gap-y-5">
-          <NumberInput
-            label="진입가 (USD)"
-            value={initialPrice}
-            onChange={(n) => setInitialPrice(Math.max(0, n))}
-            min={0}
-            step={0.01}
-          />
+          <MoneyInput label="진입가 (USD)" value={initialPrice} onChange={setInitialPrice} />
           <NumberInput
             label="처음 들어가는 비율 (1~40%)"
             value={initialRatio}
@@ -241,13 +240,14 @@ export function CoinLeverageCalculator() {
               style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }}
             >
               <tr>
-                <th className="px-3 py-2 text-left">단계</th>
+                <th className="px-3 py-2 text-left whitespace-nowrap">단계</th>
                 <th className="px-3 py-2 text-right">진입가</th>
-                <th className="px-3 py-2 text-right">최초가 대비</th>
-                <th className="px-3 py-2 text-right">투입 비율</th>
-                <th className="px-3 py-2 text-right">투입 증거금</th>
-                <th className="px-3 py-2 text-right">누적 평단가</th>
-                <th className="px-3 py-2 text-right">누적 청산가</th>
+                <th className="px-3 py-2 text-right whitespace-nowrap">최초가 대비</th>
+                <th className="px-3 py-2 text-right whitespace-nowrap">투입 비율</th>
+                <th className="px-3 py-2 text-right whitespace-nowrap">투입 증거금</th>
+                <th className="px-3 py-2 text-right whitespace-nowrap">누적 평단가</th>
+                <th className="px-3 py-2 text-right whitespace-nowrap">평가손익</th>
+                <th className="px-3 py-2 text-right whitespace-nowrap">누적 청산가</th>
                 <th className="px-3 py-2 text-right"></th>
               </tr>
             </thead>
@@ -256,20 +256,20 @@ export function CoinLeverageCalculator() {
                 const isInitial = idx === 0;
                 return (
                   <tr key={row.id} className="border-t" style={{ borderColor: 'var(--color-border)' }}>
-                    <td className="px-3 py-2 font-semibold">{isInitial ? '최초' : `물타기 ${idx}`}</td>
+                    <td className="px-3 py-2 font-semibold whitespace-nowrap">
+                      {isInitial ? '최초' : `물타기 ${idx}`}
+                    </td>
                     <td className="px-3 py-2 text-right">
                       {isInitial ? (
                         <span className="tabular-nums">{formatUSD(row.price)}</span>
                       ) : (
-                        <InlineNumberInput
+                        <InlineMoneyInput
                           value={row.price}
-                          min={0}
-                          step={0.01}
                           onChange={(n) => updateEntry(row.id, 'price', Math.max(0, n))}
                         />
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums muted">
+                    <td className="px-3 py-2 text-right tabular-nums muted whitespace-nowrap">
                       {isInitial ? '—' : formatSignedPercent(row.changeFromFirst)}
                     </td>
                     <td className="px-3 py-2 text-right">
@@ -286,12 +286,28 @@ export function CoinLeverageCalculator() {
                         />
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums muted">{formatUSD(row.margin)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                    <td className="px-3 py-2 text-right tabular-nums muted whitespace-nowrap">
+                      {formatUSD(row.margin)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap">
                       {formatUSD(row.avgPrice)}
                     </td>
                     <td
-                      className="px-3 py-2 text-right tabular-nums font-semibold"
+                      className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap"
+                      style={{
+                        color:
+                          row.stagePnl > 0
+                            ? 'var(--color-success)'
+                            : row.stagePnl < 0
+                              ? 'var(--color-danger)'
+                              : undefined,
+                      }}
+                    >
+                      {formatUSD(row.stagePnl)}
+                      <span className="muted font-normal ml-1">({formatSignedPercent(row.stageRoe)})</span>
+                    </td>
+                    <td
+                      className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap"
                       style={{ color: 'var(--color-danger)' }}
                     >
                       {formatUSD(row.liqPrice)}
@@ -316,89 +332,59 @@ export function CoinLeverageCalculator() {
         </div>
       </div>
 
-      {/* 수익률 테이블 */}
+      {/* 수익 시뮬레이션 */}
       <div className="card-lg">
-        <h2 className="text-base font-bold mb-1">평단가 기준 손익 시뮬레이션</h2>
+        <h2 className="text-base font-bold mb-1">평단가 기준 수익 시뮬레이션</h2>
         <p className="text-xs muted mb-3">
-          현재까지 물타기 반영 평단가 {formatUSD(current.avgPrice)} 기준, 가격 변동률별 손익 (수수료·펀딩비 미반영)
+          평단가 {formatUSD(current.avgPrice)} 대비 유리한 방향({side === 'long' ? '상승' : '하락'})으로 0.3%~10.0%
+          움직였을 때 예상 수익 (0.1%p 단위, 수수료·펀딩비 미반영). 손실·청산 위험은 상단 청산가·청산까지 여유를
+          참고하세요.
         </p>
-        <div className="overflow-x-auto rounded-lg border" style={{ borderColor: 'var(--color-border)' }}>
+        <div
+          className="overflow-x-auto rounded-lg border max-h-96 overflow-y-auto"
+          style={{ borderColor: 'var(--color-border)' }}
+        >
           <table className="w-full text-sm">
             <thead
-              className="text-xs uppercase tracking-wider"
+              className="text-xs uppercase tracking-wider sticky top-0"
               style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }}
             >
               <tr>
-                <th className="px-3 py-2 text-left">가격 변동률</th>
-                <th className="px-3 py-2 text-right">가격</th>
-                <th className="px-3 py-2 text-right">손익 (USD)</th>
-                <th className="px-3 py-2 text-right">손익 (KRW)</th>
-                <th className="px-3 py-2 text-right">ROE</th>
+                <th className="px-3 py-2 text-left whitespace-nowrap">변동률</th>
+                <th className="px-3 py-2 text-right whitespace-nowrap">가격 (USD)</th>
+                <th className="px-3 py-2 text-right whitespace-nowrap">가격 (KRW)</th>
+                <th className="px-3 py-2 text-right whitespace-nowrap">수익 (USD)</th>
+                <th className="px-3 py-2 text-right whitespace-nowrap">수익 (KRW)</th>
+                <th className="px-3 py-2 text-right whitespace-nowrap">ROE</th>
               </tr>
             </thead>
             <tbody>
-              {pnlRows.map((row) => {
-                const isZero = row.changePct === 0;
-                const isPositive = row.pnl > 0;
-                const isNegative = row.pnl < 0;
-                const priceBelowLiq =
-                  side === 'long' ? row.price <= current.liqPrice : row.price >= current.liqPrice;
-                return (
-                  <tr
-                    key={row.changePct}
-                    className="border-t"
-                    style={{
-                      borderColor: 'var(--color-border)',
-                      backgroundColor: isZero
-                        ? 'color-mix(in srgb, var(--color-schd) 8%, transparent)'
-                        : undefined,
-                    }}
+              {pnlRows.map((row) => (
+                <tr key={row.changePct} className="border-t" style={{ borderColor: 'var(--color-border)' }}>
+                  <td className="px-3 py-2 font-semibold whitespace-nowrap">
+                    {formatSignedPercent(row.changePct)}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{formatUSD(row.price)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums muted whitespace-nowrap">
+                    {formatKRW(row.price * exchangeRate)}
+                  </td>
+                  <td
+                    className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap"
+                    style={{ color: 'var(--color-success)' }}
                   >
-                    <td className="px-3 py-2 font-semibold">{formatSignedPercent(row.changePct)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {formatUSD(row.price)}
-                      {priceBelowLiq && (
-                        <span
-                          className="chip ml-2"
-                          style={{
-                            backgroundColor: 'color-mix(in srgb, var(--color-danger) 18%, transparent)',
-                            color: 'var(--color-danger)',
-                          }}
-                        >
-                          청산권
-                        </span>
-                      )}
-                    </td>
-                    <td
-                      className="px-3 py-2 text-right tabular-nums font-semibold"
-                      style={{
-                        color: isPositive
-                          ? 'var(--color-success)'
-                          : isNegative
-                            ? 'var(--color-danger)'
-                            : undefined,
-                      }}
-                    >
-                      {formatUSD(row.pnl)}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums muted">
-                      {formatKRW(row.pnl * exchangeRate)}
-                    </td>
-                    <td
-                      className="px-3 py-2 text-right tabular-nums font-semibold"
-                      style={{
-                        color: isPositive
-                          ? 'var(--color-success)'
-                          : isNegative
-                            ? 'var(--color-danger)'
-                            : undefined,
-                      }}
-                    >
-                      {formatSignedPercent(row.roe)}
-                    </td>
-                  </tr>
-                );
-              })}
+                    {formatUSD(row.pnl)}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums muted whitespace-nowrap">
+                    {formatKRW(row.pnl * exchangeRate)}
+                  </td>
+                  <td
+                    className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap"
+                    style={{ color: 'var(--color-success)' }}
+                  >
+                    {formatSignedPercent(row.roe)}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -408,9 +394,9 @@ export function CoinLeverageCalculator() {
         className="rounded-xl px-4 py-3 text-xs border leading-relaxed"
         style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
       >
-        <strong>주의:</strong> 본 계산기는 격리 마진 기준 단순 근사 모델입니다. 수수료, 펀딩비, 거래소별 유지증거금
-        구간 차등, 슬리피지는 반영되지 않으며 실제 청산가는 거래소 화면과 다를 수 있습니다. 투자 판단은 본인 책임하에
-        신중히 결정하세요.
+        <strong>주의:</strong> 본 계산기는 크로스 마진 기준 단순 근사 모델입니다. 총 자금 전체가 이 포지션의 증거금으로
+        쓰인다고 가정하며(계좌 내 다른 동시 포지션 없음 전제), 수수료·펀딩비·거래소별 유지증거금 구간 차등·슬리피지는
+        반영되지 않아 실제 청산가는 거래소 화면과 다를 수 있습니다. 투자 판단은 본인 책임하에 신중히 결정하세요.
       </div>
     </div>
   );
@@ -483,6 +469,78 @@ function NumberInput({
       />
       {hint && <div className="text-xs muted mt-1.5">{hint}</div>}
     </div>
+  );
+}
+
+function MoneyInput({
+  label,
+  value,
+  onChange,
+  hint,
+}: {
+  label: string;
+  value: number;
+  onChange: (n: number) => void;
+  hint?: string;
+}) {
+  const [text, setText] = useState(formatMoneyDisplay(value));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setText(formatMoneyDisplay(value));
+  }, [value, focused]);
+
+  return (
+    <div>
+      <label className="text-sm font-semibold block mb-2">{label}</label>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={text}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onChange={(e) => {
+          setText(e.target.value);
+          onChange(Math.max(0, parseMoneyInput(e.target.value)));
+        }}
+        className="w-full px-3 py-2 rounded-lg border tabular-nums text-base font-semibold"
+        style={{
+          backgroundColor: 'var(--color-surface)',
+          borderColor: 'var(--color-border)',
+          color: 'var(--color-text)',
+        }}
+      />
+      {hint && <div className="text-xs muted mt-1.5">{hint}</div>}
+    </div>
+  );
+}
+
+function InlineMoneyInput({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const [text, setText] = useState(formatMoneyDisplay(value));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setText(formatMoneyDisplay(value));
+  }, [value, focused]);
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={text}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      onChange={(e) => {
+        setText(e.target.value);
+        onChange(Math.max(0, parseMoneyInput(e.target.value)));
+      }}
+      className="w-28 px-2 py-1 rounded-md border tabular-nums text-right text-sm"
+      style={{
+        backgroundColor: 'var(--color-surface)',
+        borderColor: 'var(--color-border)',
+        color: 'var(--color-text)',
+      }}
+    />
   );
 }
 

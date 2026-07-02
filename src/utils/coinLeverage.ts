@@ -7,21 +7,26 @@ import type {
 } from '../types/coin';
 
 /**
- * 청산가 계산 (격리 마진 단순 모델, 수수료·펀딩비 미반영)
- * 거래소들이 공통적으로 안내하는 근사식: entry × (1 ∓ 1/leverage ± MMR)
+ * 청산가 계산 (크로스 마진 모델, 수수료·펀딩비 미반영)
+ * 계좌 총 자금(equity) 전체가 이 포지션의 증거금으로 사용된다고 가정 (다른 동시 포지션 없음 전제).
+ * 청산 조건: equity + 미실현손익 = 유지증거금(수량 × 가격 × MMR)
  */
 export function calcLiquidationPrice(
   avgPrice: number,
-  leverage: number,
+  cumQty: number,
+  equity: number,
   maintenanceMarginRate: number,
   side: PositionSide,
 ): number {
-  if (leverage <= 0 || avgPrice <= 0) return 0;
-  const initialMarginRate = 1 / leverage;
+  if (cumQty <= 0 || avgPrice <= 0) return 0;
   if (side === 'long') {
-    return avgPrice * (1 - initialMarginRate + maintenanceMarginRate);
+    const denom = cumQty * (1 - maintenanceMarginRate);
+    if (denom <= 0) return 0;
+    return Math.max(0, (cumQty * avgPrice - equity) / denom);
   }
-  return avgPrice * (1 + initialMarginRate - maintenanceMarginRate);
+  const denom = cumQty * (1 + maintenanceMarginRate);
+  if (denom <= 0) return 0;
+  return (equity + cumQty * avgPrice) / denom;
 }
 
 export function buildLadder(params: CoinLeverageParams): LadderRowResult[] {
@@ -39,8 +44,11 @@ export function buildLadder(params: CoinLeverageParams): LadderRowResult[] {
     cumQty += qty;
 
     const avgPrice = cumQty > 0 ? (cumMargin * leverage) / cumQty : 0;
-    const liqPrice = calcLiquidationPrice(avgPrice, leverage, maintenanceMarginRate, side);
+    const liqPrice = calcLiquidationPrice(avgPrice, cumQty, totalCapital, maintenanceMarginRate, side);
     const changeFromFirst = firstPrice > 0 ? (entry.price - firstPrice) / firstPrice : 0;
+
+    const stagePnl = side === 'long' ? cumQty * (entry.price - avgPrice) : cumQty * (avgPrice - entry.price);
+    const stageRoe = cumMargin > 0 ? stagePnl / cumMargin : 0;
 
     return {
       id: entry.id,
@@ -53,23 +61,32 @@ export function buildLadder(params: CoinLeverageParams): LadderRowResult[] {
       avgPrice,
       liqPrice,
       changeFromFirst,
+      stagePnl,
+      stageRoe,
     };
   });
 }
 
+/**
+ * 평단가 대비 "유리한 방향"으로 움직였을 때의 수익 시뮬레이션.
+ * moves 는 항상 양수(변동폭)이며, 롱은 상승/숏은 하락 방향으로 적용된다.
+ * 손실·청산 위험은 청산가로 별도 확인하므로 이 표는 수익 구간만 다룬다.
+ */
 export function buildPnlTable(
   avgPrice: number,
   cumQty: number,
   cumMargin: number,
   side: PositionSide,
-  changes: number[],
+  moves: number[],
 ): PnlRow[] {
-  return changes.map((changePct) => {
-    const price = avgPrice * (1 + changePct);
+  return moves.map((movePct) => {
+    const directional = side === 'long' ? movePct : -movePct;
+    const price = avgPrice * (1 + directional);
     const pnl = side === 'long' ? cumQty * (price - avgPrice) : cumQty * (avgPrice - price);
     const roe = cumMargin > 0 ? pnl / cumMargin : 0;
-    return { changePct, price, pnl, roe };
+    return { changePct: movePct, price, pnl, roe };
   });
 }
 
-export const DEFAULT_PNL_CHANGES = [-0.3, -0.2, -0.15, -0.1, -0.05, -0.02, 0, 0.02, 0.05, 0.1, 0.15, 0.2, 0.3];
+// 0.3% ~ 10.0% 구간을 0.1%p 단위로 생성 (98개)
+export const DEFAULT_PNL_CHANGES = Array.from({ length: 98 }, (_, i) => (i + 3) / 1000);
