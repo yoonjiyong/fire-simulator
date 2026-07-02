@@ -21,7 +21,7 @@ function parseMoneyInput(text: string): number {
 export function CoinLeverageCalculator() {
   const [totalCapital, setTotalCapital] = useState(20000);
   const [leverage, setLeverage] = useState(10);
-  const [side, setSide] = useState<PositionSide>('long');
+  const side: PositionSide = 'long';
   const [maintenanceMarginPct, setMaintenanceMarginPct] = useState(0.5);
   const [exchangeRate, setExchangeRate] = useState(1500);
 
@@ -207,35 +207,47 @@ export function CoinLeverageCalculator() {
               hint="최초 진입 시점의 실제 코인 시장가 (평단가·청산가 계산에 사용)"
             />
           </div>
-  
+
           <div>
-            <div className="text-sm font-semibold mb-2">포지션 방향</div>
-            <div className="flex gap-2">
-              {(['long', 'short'] as PositionSide[]).map((s) => {
-                const selected = side === s;
-                const label = s === 'long' ? '롱 (상승 베팅)' : '숏 (하락 베팅)';
-                const accent = s === 'long' ? 'var(--color-success)' : 'var(--color-danger)';
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setSide(s)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border"
-                    style={{
-                      borderColor: selected ? accent : 'var(--color-border)',
-                      color: selected ? accent : 'var(--color-text-secondary)',
-                      backgroundColor: selected ? `color-mix(in srgb, ${accent} 10%, transparent)` : 'transparent',
-                    }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
+            <h3 className="text-sm font-bold mb-1">목표가 손익 계산</h3>
+            <p className="text-xs muted mb-3">
+              현재(또는 목표) 가격을 입력하면 평단가 {formatUSD(current.avgPrice)} 대비 변동률과 손익을 계산합니다.
+            </p>
+            <MoneyInput
+              label="현재 가격 (USD)"
+              value={targetPrice}
+              onChange={setTargetPrice}
+              hint={targetIsLiquidated ? '이 가격에서는 이미 청산됩니다' : undefined}
+            />
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <ResultCard
+                label="변동률"
+                value={formatSignedPercent(targetChangePct)}
+                accent={targetChangePct >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
+                compact
+              />
+              <ResultCard
+                label="ROE"
+                value={formatSignedPercent(targetRoe)}
+                accent={targetRoe >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
+                compact
+              />
+              <ResultCard
+                label="손익 (USD)"
+                value={formatUSD(targetPnl)}
+                accent={targetPnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
+                compact
+              />
+              <ResultCard
+                label="손익 (KRW)"
+                value={formatKRW(targetPnl * exchangeRate)}
+                accent={targetPnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
+                compact
+              />
             </div>
           </div>
         </div>
-  
-        <div className="space-y-4">
+
         {/* 수익 시뮬레이션 */}
         <div className="card-lg">
           <h2 className="text-base font-bold mb-1">평단가 기준 수익 시뮬레이션</h2>
@@ -292,47 +304,6 @@ export function CoinLeverageCalculator() {
               </tbody>
             </table>
           </div>
-        </div>
-
-        {/* 목표가 손익 계산 */}
-        <div className="card-lg space-y-4">
-        <h2 className="text-base font-bold">목표가 손익 계산</h2>
-        <p className="text-xs muted">
-          현재(또는 목표) 가격을 입력하면 평단가 {formatUSD(current.avgPrice)} 대비 변동률과 손익을 계산합니다.
-        </p>
-        <MoneyInput
-          label="현재 가격 (USD)"
-          value={targetPrice}
-          onChange={setTargetPrice}
-          hint={targetIsLiquidated ? '이 가격에서는 이미 청산됩니다' : undefined}
-        />
-        <div className="grid grid-cols-2 gap-3">
-          <ResultCard
-            label="변동률"
-            value={formatSignedPercent(targetChangePct)}
-            accent={targetChangePct >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
-            compact
-          />
-          <ResultCard
-            label="ROE"
-            value={formatSignedPercent(targetRoe)}
-            accent={targetRoe >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
-            compact
-          />
-          <ResultCard
-            label="손익 (USD)"
-            value={formatUSD(targetPnl)}
-            accent={targetPnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
-            compact
-          />
-          <ResultCard
-            label="손익 (KRW)"
-            value={formatKRW(targetPnl * exchangeRate)}
-            accent={targetPnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}
-            compact
-          />
-        </div>
-        </div>
         </div>
       </div>
 
