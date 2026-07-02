@@ -138,81 +138,141 @@ export function CoinLeverageCalculator() {
         />
       </div>
 
-      {/* 기본 설정 */}
-      <div className="card-lg space-y-5">
-        <h2 className="text-base font-bold">기본 설정</h2>
-        <div className="grid md:grid-cols-2 gap-x-6 gap-y-5">
-          <MoneyInput
-            label="총 자금 (USD)"
-            value={totalCapital}
-            onChange={setTotalCapital}
-            hint={formatKRW(totalCapital * exchangeRate)}
-          />
-          <NumberInput
-            label="레버리지 (1~100배)"
-            value={leverage}
-            onChange={(n) => setLeverage(Math.round(n))}
-            min={1}
-            max={100}
-            step={1}
-            hint={`${leverage}x`}
-          />
-          <NumberInput
-            label="유지증거금률 (%)"
-            value={maintenanceMarginPct}
-            onChange={setMaintenanceMarginPct}
-            min={0}
-            max={10}
-            step={0.1}
-            hint="거래소·종목별로 상이 (기본 0.5%)"
-          />
-          <MoneyInput label="환율 (KRW/USD)" value={exchangeRate} onChange={setExchangeRate} />
-          <MoneyInput
-            label="코인 가격 (USD)"
-            value={coinPrice}
-            onChange={setCoinPrice}
-            hint="최초 진입 시점의 실제 코인 시장가 (평단가·청산가 계산에 사용)"
-          />
-          <NumberInput
-            label="처음 들어가는 비율 (1~40등분)"
-            value={initialRatio}
-            onChange={setInitialRatio}
-            min={1}
-            max={40}
-            step={1}
-            hint={`1/${initialRatioClamped} = ${formatUSD(totalCapital / initialRatioClamped)} (총자금의 ${initialRatioPercent.toFixed(1)}%)`}
-          />
-          <MoneyInput
-            label="투입 금액 (USD)"
-            value={initialAmount}
-            onChange={setInitialAmount}
-            hint={`비율 변경 시 자동 재계산 (직접 수정 가능) · 현재 총자금의 ${initialAmountRatioPercent.toFixed(1)}%`}
-          />
+      <div className="grid lg:grid-cols-2 gap-4 items-start">
+        {/* 기본 설정 */}
+        <div className="card-lg space-y-5">
+          <h2 className="text-base font-bold">기본 설정</h2>
+          <div className="grid md:grid-cols-2 gap-x-6 gap-y-5">
+            <MoneyInput
+              label="총 자금 (USD)"
+              value={totalCapital}
+              onChange={setTotalCapital}
+              hint={formatKRW(totalCapital * exchangeRate)}
+            />
+            <NumberInput
+              label="레버리지 (1~100배)"
+              value={leverage}
+              onChange={(n) => setLeverage(Math.round(n))}
+              min={1}
+              max={100}
+              step={1}
+              hint={`${leverage}x`}
+            />
+            <NumberInput
+              label="유지증거금률 (%)"
+              value={maintenanceMarginPct}
+              onChange={setMaintenanceMarginPct}
+              min={0}
+              max={10}
+              step={0.1}
+              hint="거래소·종목별로 상이 (기본 0.5%)"
+            />
+            <MoneyInput label="환율 (KRW/USD)" value={exchangeRate} onChange={setExchangeRate} />
+            <MoneyInput
+              label="코인 가격 (USD)"
+              value={coinPrice}
+              onChange={setCoinPrice}
+              hint="최초 진입 시점의 실제 코인 시장가 (평단가·청산가 계산에 사용)"
+            />
+            <NumberInput
+              label="처음 들어가는 비율 (1~40등분)"
+              value={initialRatio}
+              onChange={setInitialRatio}
+              min={1}
+              max={40}
+              step={1}
+              hint={`1/${initialRatioClamped} = ${formatUSD(totalCapital / initialRatioClamped)} (총자금의 ${initialRatioPercent.toFixed(1)}%)`}
+            />
+            <MoneyInput
+              label="투입 금액 (USD)"
+              value={initialAmount}
+              onChange={setInitialAmount}
+              hint={`비율 변경 시 자동 재계산 (직접 수정 가능) · 현재 총자금의 ${initialAmountRatioPercent.toFixed(1)}%`}
+            />
+          </div>
+  
+          <div>
+            <div className="text-sm font-semibold mb-2">포지션 방향</div>
+            <div className="flex gap-2">
+              {(['long', 'short'] as PositionSide[]).map((s) => {
+                const selected = side === s;
+                const label = s === 'long' ? '롱 (상승 베팅)' : '숏 (하락 베팅)';
+                const accent = s === 'long' ? 'var(--color-success)' : 'var(--color-danger)';
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setSide(s)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border"
+                    style={{
+                      borderColor: selected ? accent : 'var(--color-border)',
+                      color: selected ? accent : 'var(--color-text-secondary)',
+                      backgroundColor: selected ? `color-mix(in srgb, ${accent} 10%, transparent)` : 'transparent',
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
-
-        <div>
-          <div className="text-sm font-semibold mb-2">포지션 방향</div>
-          <div className="flex gap-2">
-            {(['long', 'short'] as PositionSide[]).map((s) => {
-              const selected = side === s;
-              const label = s === 'long' ? '롱 (상승 베팅)' : '숏 (하락 베팅)';
-              const accent = s === 'long' ? 'var(--color-success)' : 'var(--color-danger)';
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setSide(s)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border"
-                  style={{
-                    borderColor: selected ? accent : 'var(--color-border)',
-                    color: selected ? accent : 'var(--color-text-secondary)',
-                    backgroundColor: selected ? `color-mix(in srgb, ${accent} 10%, transparent)` : 'transparent',
-                  }}
-                >
-                  {label}
-                </button>
-              );
-            })}
+  
+        {/* 수익 시뮬레이션 */}
+        <div className="card-lg">
+          <h2 className="text-base font-bold mb-1">평단가 기준 수익 시뮬레이션</h2>
+          <p className="text-xs muted mb-3">
+            평단가 {formatUSD(current.avgPrice)} 대비 유리한 방향({side === 'long' ? '상승' : '하락'})으로 0.3%~10.0%
+            움직였을 때 예상 수익 (0.1%p 단위, 수수료·펀딩비 미반영). 손실·청산 위험은 상단 청산가·청산까지 여유를
+            참고하세요.
+          </p>
+          <div
+            className="overflow-x-auto rounded-lg border max-h-96 overflow-y-auto"
+            style={{ borderColor: 'var(--color-border)' }}
+          >
+            <table className="w-full text-sm">
+              <thead
+                className="text-xs uppercase tracking-wider sticky top-0"
+                style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }}
+              >
+                <tr>
+                  <th className="px-3 py-2 text-left whitespace-nowrap">변동률</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">가격 (USD)</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">포지션 가치 (USD)</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">수익 (USD)</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">수익 (KRW)</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">ROE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pnlRows.map((row) => (
+                  <tr key={row.changePct} className="border-t" style={{ borderColor: 'var(--color-border)' }}>
+                    <td className="px-3 py-2 font-semibold whitespace-nowrap">
+                      {formatSignedPercent(row.changePct)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{formatUSD(row.price)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums muted whitespace-nowrap">
+                      {formatUSD(current.cumMargin * leverage * (1 + row.changePct))}
+                    </td>
+                    <td
+                      className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap"
+                      style={{ color: 'var(--color-success)' }}
+                    >
+                      {formatUSD(row.pnl)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums muted whitespace-nowrap">
+                      {formatKRW(row.pnl * exchangeRate)}
+                    </td>
+                    <td
+                      className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap"
+                      style={{ color: 'var(--color-success)' }}
+                    >
+                      {formatSignedPercent(row.roe)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -344,64 +404,6 @@ export function CoinLeverageCalculator() {
                   </tr>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* 수익 시뮬레이션 */}
-      <div className="card-lg">
-        <h2 className="text-base font-bold mb-1">평단가 기준 수익 시뮬레이션</h2>
-        <p className="text-xs muted mb-3">
-          평단가 {formatUSD(current.avgPrice)} 대비 유리한 방향({side === 'long' ? '상승' : '하락'})으로 0.3%~10.0%
-          움직였을 때 예상 수익 (0.1%p 단위, 수수료·펀딩비 미반영). 손실·청산 위험은 상단 청산가·청산까지 여유를
-          참고하세요.
-        </p>
-        <div
-          className="overflow-x-auto rounded-lg border max-h-96 overflow-y-auto"
-          style={{ borderColor: 'var(--color-border)' }}
-        >
-          <table className="w-full text-sm">
-            <thead
-              className="text-xs uppercase tracking-wider sticky top-0"
-              style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-secondary)' }}
-            >
-              <tr>
-                <th className="px-3 py-2 text-left whitespace-nowrap">변동률</th>
-                <th className="px-3 py-2 text-right whitespace-nowrap">가격 (USD)</th>
-                <th className="px-3 py-2 text-right whitespace-nowrap">포지션 가치 (USD)</th>
-                <th className="px-3 py-2 text-right whitespace-nowrap">수익 (USD)</th>
-                <th className="px-3 py-2 text-right whitespace-nowrap">수익 (KRW)</th>
-                <th className="px-3 py-2 text-right whitespace-nowrap">ROE</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pnlRows.map((row) => (
-                <tr key={row.changePct} className="border-t" style={{ borderColor: 'var(--color-border)' }}>
-                  <td className="px-3 py-2 font-semibold whitespace-nowrap">
-                    {formatSignedPercent(row.changePct)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{formatUSD(row.price)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums muted whitespace-nowrap">
-                    {formatUSD(current.cumMargin * leverage * (1 + row.changePct))}
-                  </td>
-                  <td
-                    className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap"
-                    style={{ color: 'var(--color-success)' }}
-                  >
-                    {formatUSD(row.pnl)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums muted whitespace-nowrap">
-                    {formatKRW(row.pnl * exchangeRate)}
-                  </td>
-                  <td
-                    className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap"
-                    style={{ color: 'var(--color-success)' }}
-                  >
-                    {formatSignedPercent(row.roe)}
-                  </td>
-                </tr>
-              ))}
             </tbody>
           </table>
         </div>
