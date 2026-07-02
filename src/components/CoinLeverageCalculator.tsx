@@ -31,9 +31,12 @@ export function CoinLeverageCalculator() {
   const [extraEntries, setExtraEntries] = useState<LadderEntryInput[]>([]);
   const idCounter = useRef(1);
 
+  const initialRatioClamped = clamp(initialRatio, 1, 40);
+  const initialRatioPercent = 100 / initialRatioClamped;
+
   const entries = useMemo<LadderEntryInput[]>(
-    () => [{ id: 'initial', price: initialPrice, ratio: clamp(initialRatio, 1, 40) }, ...extraEntries],
-    [initialPrice, initialRatio, extraEntries],
+    () => [{ id: 'initial', price: initialPrice, ratio: initialRatioPercent }, ...extraEntries],
+    [initialPrice, initialRatioPercent, extraEntries],
   );
 
   const ladder = useMemo(
@@ -188,13 +191,13 @@ export function CoinLeverageCalculator() {
         <div className="grid md:grid-cols-2 gap-x-6 gap-y-5">
           <MoneyInput label="진입가 (USD)" value={initialPrice} onChange={setInitialPrice} />
           <NumberInput
-            label="처음 들어가는 비율 (1~40%)"
+            label="처음 들어가는 비율 (1~40등분)"
             value={initialRatio}
             onChange={(n) => setInitialRatio(clamp(n, 1, 40))}
             min={1}
             max={40}
             step={1}
-            hint={formatUSD((totalCapital * clamp(initialRatio, 1, 40)) / 100)}
+            hint={`1/${initialRatioClamped} = ${formatUSD(totalCapital / initialRatioClamped)} (총자금의 ${initialRatioPercent.toFixed(1)}%)`}
           />
         </div>
       </div>
