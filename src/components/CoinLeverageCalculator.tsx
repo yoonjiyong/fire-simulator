@@ -25,8 +25,9 @@ export function CoinLeverageCalculator() {
   const [maintenanceMarginPct, setMaintenanceMarginPct] = useState(0.5);
   const [exchangeRate, setExchangeRate] = useState(1500);
 
-  const [initialPrice, setInitialPrice] = useState(100);
-  const [initialRatio, setInitialRatio] = useState(20);
+  const [coinPrice, setCoinPrice] = useState(100);
+  const [initialAmount, setInitialAmount] = useState(2000);
+  const [initialRatio, setInitialRatio] = useState(10);
 
   const [extraEntries, setExtraEntries] = useState<LadderEntryInput[]>([]);
   const idCounter = useRef(1);
@@ -34,9 +35,19 @@ export function CoinLeverageCalculator() {
   const initialRatioClamped = clamp(initialRatio, 1, 40);
   const initialRatioPercent = 100 / initialRatioClamped;
 
+  const prevRatioRef = useRef(initialRatioClamped);
+  useEffect(() => {
+    if (prevRatioRef.current !== initialRatioClamped) {
+      prevRatioRef.current = initialRatioClamped;
+      setInitialAmount(Math.round((totalCapital / initialRatioClamped) * 100) / 100);
+    }
+  }, [initialRatioClamped, totalCapital]);
+
+  const initialAmountRatioPercent = totalCapital > 0 ? clamp((initialAmount / totalCapital) * 100, 0, 100) : 0;
+
   const entries = useMemo<LadderEntryInput[]>(
-    () => [{ id: 'initial', price: initialPrice, ratio: initialRatioPercent }, ...extraEntries],
-    [initialPrice, initialRatioPercent, extraEntries],
+    () => [{ id: 'initial', price: coinPrice, ratio: initialAmountRatioPercent }, ...extraEntries],
+    [coinPrice, initialAmountRatioPercent, extraEntries],
   );
 
   const ladder = useMemo(
@@ -75,7 +86,7 @@ export function CoinLeverageCalculator() {
   );
 
   const addEntry = () => {
-    const lastPrice = entries[entries.length - 1]?.price ?? initialPrice;
+    const lastPrice = entries[entries.length - 1]?.price ?? coinPrice;
     const step = side === 'long' ? 0.95 : 1.05;
     idCounter.current += 1;
     setExtraEntries((prev) => [
@@ -140,7 +151,7 @@ export function CoinLeverageCalculator() {
           <NumberInput
             label="레버리지 (1~100배)"
             value={leverage}
-            onChange={(n) => setLeverage(clamp(Math.round(n), 1, 100))}
+            onChange={(n) => setLeverage(Math.round(n))}
             min={1}
             max={100}
             step={1}
@@ -149,13 +160,34 @@ export function CoinLeverageCalculator() {
           <NumberInput
             label="유지증거금률 (%)"
             value={maintenanceMarginPct}
-            onChange={(n) => setMaintenanceMarginPct(clamp(n, 0, 10))}
+            onChange={setMaintenanceMarginPct}
             min={0}
             max={10}
             step={0.1}
             hint="거래소·종목별로 상이 (기본 0.5%)"
           />
           <MoneyInput label="환율 (KRW/USD)" value={exchangeRate} onChange={setExchangeRate} />
+          <MoneyInput
+            label="코인 가격 (USD)"
+            value={coinPrice}
+            onChange={setCoinPrice}
+            hint="최초 진입 시점의 실제 코인 시장가 (평단가·청산가 계산에 사용)"
+          />
+          <NumberInput
+            label="처음 들어가는 비율 (1~40등분)"
+            value={initialRatio}
+            onChange={setInitialRatio}
+            min={1}
+            max={40}
+            step={1}
+            hint={`1/${initialRatioClamped} = ${formatUSD(totalCapital / initialRatioClamped)} (총자금의 ${initialRatioPercent.toFixed(1)}%)`}
+          />
+          <MoneyInput
+            label="투입 금액 (USD)"
+            value={initialAmount}
+            onChange={setInitialAmount}
+            hint={`비율 변경 시 자동 재계산 (직접 수정 가능) · 현재 총자금의 ${initialAmountRatioPercent.toFixed(1)}%`}
+          />
         </div>
 
         <div>
@@ -182,23 +214,6 @@ export function CoinLeverageCalculator() {
               );
             })}
           </div>
-        </div>
-      </div>
-
-      {/* 첫 진입 */}
-      <div className="card-lg space-y-5">
-        <h2 className="text-base font-bold">최초 진입</h2>
-        <div className="grid md:grid-cols-2 gap-x-6 gap-y-5">
-          <MoneyInput label="진입가 (USD)" value={initialPrice} onChange={setInitialPrice} />
-          <NumberInput
-            label="처음 들어가는 비율 (1~40등분)"
-            value={initialRatio}
-            onChange={(n) => setInitialRatio(clamp(n, 1, 40))}
-            min={1}
-            max={40}
-            step={1}
-            hint={`1/${initialRatioClamped} = ${formatUSD(totalCapital / initialRatioClamped)} (총자금의 ${initialRatioPercent.toFixed(1)}%)`}
-          />
         </div>
       </div>
 
@@ -283,9 +298,8 @@ export function CoinLeverageCalculator() {
                           value={row.ratio}
                           min={0}
                           max={100}
-                          step={0.5}
                           suffix="%"
-                          onChange={(n) => updateEntry(row.id, 'ratio', clamp(n, 0, 100))}
+                          onChange={(n) => updateEntry(row.id, 'ratio', n)}
                         />
                       )}
                     </td>
@@ -442,7 +456,6 @@ function NumberInput({
   onChange,
   min,
   max,
-  step,
   hint,
 }: {
   label: string;
@@ -450,19 +463,41 @@ function NumberInput({
   onChange: (n: number) => void;
   min?: number;
   max?: number;
-  step: number;
+  step?: number;
   hint?: string;
 }) {
+  const [text, setText] = useState(String(value));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setText(String(value));
+  }, [value, focused]);
+
+  const commit = () => {
+    setFocused(false);
+    const parsed = Number(text);
+    let committed = Number.isFinite(parsed) ? parsed : value;
+    if (min !== undefined) committed = Math.max(min, committed);
+    if (max !== undefined) committed = Math.min(max, committed);
+    setText(String(committed));
+    onChange(committed);
+  };
+
   return (
     <div>
       <label className="text-sm font-semibold block mb-2">{label}</label>
       <input
-        type="number"
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        onChange={(e) => onChange(Number(e.target.value) || 0)}
+        type="text"
+        inputMode="decimal"
+        value={text}
+        onFocus={() => setFocused(true)}
+        onChange={(e) => {
+          setText(e.target.value);
+          const parsed = Number(e.target.value);
+          if (Number.isFinite(parsed)) onChange(parsed);
+        }}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
         className="w-full px-3 py-2 rounded-lg border tabular-nums text-base font-semibold"
         style={{
           backgroundColor: 'var(--color-surface)',
@@ -552,25 +587,46 @@ function InlineNumberInput({
   onChange,
   min,
   max,
-  step,
   suffix,
 }: {
   value: number;
   onChange: (n: number) => void;
   min?: number;
   max?: number;
-  step: number;
+  step?: number;
   suffix?: string;
 }) {
+  const [text, setText] = useState(String(value));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setText(String(value));
+  }, [value, focused]);
+
+  const commit = () => {
+    setFocused(false);
+    const parsed = Number(text);
+    let committed = Number.isFinite(parsed) ? parsed : value;
+    if (min !== undefined) committed = Math.max(min, committed);
+    if (max !== undefined) committed = Math.min(max, committed);
+    setText(String(committed));
+    onChange(committed);
+  };
+
   return (
     <span className="inline-flex items-center gap-1 justify-end">
       <input
-        type="number"
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        onChange={(e) => onChange(Number(e.target.value) || 0)}
+        type="text"
+        inputMode="decimal"
+        value={text}
+        onFocus={() => setFocused(true)}
+        onChange={(e) => {
+          setText(e.target.value);
+          const parsed = Number(e.target.value);
+          if (Number.isFinite(parsed)) onChange(parsed);
+        }}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
         className="w-24 px-2 py-1 rounded-md border tabular-nums text-right text-sm"
         style={{
           backgroundColor: 'var(--color-surface)',
