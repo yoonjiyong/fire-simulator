@@ -1,9 +1,11 @@
-import type { SimulationParams, SimulationResult, YearResult } from '../types';
+import type { AccountType, AssetHolding, SimulationResult, YearResult } from '../types';
+import type { EtfSelection } from '../types/dividend';
+import { DIVIDEND_ETFS } from './dividendEtfs';
 import { ACCOUNT_RULES, DEFAULTS } from './constants';
 
 function computeTax(
   gross: number,
-  accountType: SimulationParams['accountType'],
+  accountType: AccountType,
   defaultRate: number,
 ): { tax: number; effectiveRate: number } {
   const rule = ACCOUNT_RULES[accountType];
@@ -19,15 +21,21 @@ function computeTax(
   return { tax, effectiveRate: rule.taxRate };
 }
 
-export function simulate(params: SimulationParams): SimulationResult {
+export interface DividendSimParams {
+  totalInvestment: number; // 만원
+  selections: EtfSelection[];
+  inflationRate: number;
+  monthlyExpense: number;
+  startAge: number;
+  years: number;
+  accountType: AccountType;
+  exchangeRateShock: number;
+}
+
+export function simulateDividend(params: DividendSimParams): SimulationResult {
   const {
-    schdRatio,
     totalInvestment,
-    schdGrowthRate,
-    jepiGrowthRate,
-    schdDividendYield,
-    jepiDividendYield,
-    taxRate,
+    selections,
     inflationRate,
     monthlyExpense,
     startAge,
@@ -36,8 +44,19 @@ export function simulate(params: SimulationParams): SimulationResult {
     exchangeRateShock,
   } = params;
 
-  const schdInitial = Math.round((totalInvestment * schdRatio) / 100);
-  const jepiInitial = Math.round(totalInvestment - schdInitial);
+  const active = selections.filter((s) => s.enabled && s.ratio > 0);
+
+  const holdings: AssetHolding[] = active.map((s) => {
+    const etf = DIVIDEND_ETFS.find((e) => e.ticker === s.ticker);
+    return {
+      ticker: s.ticker,
+      name: etf?.name ?? s.ticker,
+      accent: etf?.accent ?? 'var(--color-schd)',
+      ratio: s.ratio,
+      initialValue: Math.round((totalInvestment * s.ratio) / 100),
+    };
+  });
+
   const rows: YearResult[] = [];
   let cumulativeNet = 0;
   let thresholdEnteredYear: number | null = null;
@@ -45,15 +64,17 @@ export function simulate(params: SimulationParams): SimulationResult {
   let effectiveRateCount = 0;
 
   for (let y = 0; y <= years; y++) {
-    const schdValue = schdInitial * Math.pow(1 + schdGrowthRate, y);
-    const jepiValue = jepiInitial * Math.pow(1 + jepiGrowthRate, y);
-    const totalValue = schdValue + jepiValue;
+    let totalValue = 0;
+    let grossDividend = 0;
 
-    const schdDividend = schdValue * schdDividendYield;
-    const jepiDividend = jepiValue * jepiDividendYield;
-    const grossDividend = schdDividend + jepiDividend;
+    for (const holding of holdings) {
+      const selection = active.find((s) => s.ticker === holding.ticker)!;
+      const value = holding.initialValue * Math.pow(1 + selection.growthRate, y);
+      totalValue += value;
+      grossDividend += value * selection.yieldRate;
+    }
 
-    const { tax, effectiveRate } = computeTax(grossDividend, accountType, taxRate);
+    const { tax, effectiveRate } = computeTax(grossDividend, accountType, DEFAULTS.TAX_RATE);
     totalEffectiveRateSum += effectiveRate;
     effectiveRateCount += 1;
 
@@ -74,11 +95,7 @@ export function simulate(params: SimulationParams): SimulationResult {
     rows.push({
       year: y,
       age: startAge + y,
-      schdValue,
-      jepiValue,
       totalValue,
-      schdDividend,
-      jepiDividend,
       grossDividend,
       tax,
       netDividend,
@@ -93,9 +110,8 @@ export function simulate(params: SimulationParams): SimulationResult {
 
   return {
     rows,
-    schdInitial,
-    jepiInitial,
+    holdings,
     thresholdEnteredYear,
-    effectiveTaxRate: effectiveRateCount > 0 ? totalEffectiveRateSum / effectiveRateCount : taxRate,
+    effectiveTaxRate: effectiveRateCount > 0 ? totalEffectiveRateSum / effectiveRateCount : DEFAULTS.TAX_RATE,
   };
 }

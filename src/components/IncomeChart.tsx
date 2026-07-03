@@ -14,8 +14,6 @@ import { formatMonthly } from '../utils/format';
 
 interface IncomeChartProps {
   result: SimulationResult;
-  resultB?: SimulationResult | null;
-  strategyBLabel?: string;
   theme: ThemeMode;
 }
 
@@ -25,14 +23,10 @@ interface ChartPoint {
   net: number;
   real: number;
   expense: number;
-  netB?: number;
-  realB?: number;
 }
 
 const THEME_COLORS: Record<ThemeMode, {
-  schd: string;
-  jepi: string;
-  success: string;
+  primary: string;
   warning: string;
   text: string;
   grid: string;
@@ -40,9 +34,7 @@ const THEME_COLORS: Record<ThemeMode, {
   tooltipText: string;
 }> = {
   light: {
-    schd: '#378add',
-    jepi: '#d85a30',
-    success: '#1d9e75',
+    primary: '#378add',
     warning: '#ba7517',
     text: '#6b6b65',
     grid: '#e5e5e0',
@@ -50,9 +42,7 @@ const THEME_COLORS: Record<ThemeMode, {
     tooltipText: '#1a1a1a',
   },
   sepia: {
-    schd: '#2c6fa3',
-    jepi: '#b94a1f',
-    success: '#5b7f2f',
+    primary: '#2c6fa3',
     warning: '#a26515',
     text: '#7a6644',
     grid: '#d8c9a3',
@@ -60,9 +50,7 @@ const THEME_COLORS: Record<ThemeMode, {
     tooltipText: '#4b3a24',
   },
   dark: {
-    schd: '#85b7eb',
-    jepi: '#f0997b',
-    success: '#5dcaa5',
+    primary: '#85b7eb',
     warning: '#fac775',
     text: '#a0a098',
     grid: '#303030',
@@ -71,28 +59,21 @@ const THEME_COLORS: Record<ThemeMode, {
   },
 };
 
-export function IncomeChart({ result, resultB, strategyBLabel, theme }: IncomeChartProps) {
+export function IncomeChart({ result, theme }: IncomeChartProps) {
   const colors = THEME_COLORS[theme];
 
-  const data: ChartPoint[] = result.rows.map((row, idx) => {
-    const point: ChartPoint = {
-      year: row.year,
-      age: row.age,
-      net: Math.round(row.monthlyIncome),
-      real: Math.round(row.realMonthlyIncome),
-      expense: Math.round(row.monthlyExpenseNominal),
-    };
-    if (resultB && resultB.rows[idx]) {
-      point.netB = Math.round(resultB.rows[idx].monthlyIncome);
-      point.realB = Math.round(resultB.rows[idx].realMonthlyIncome);
-    }
-    return point;
-  });
+  const data: ChartPoint[] = result.rows.map((row) => ({
+    year: row.year,
+    age: row.age,
+    net: Math.round(row.monthlyIncome),
+    real: Math.round(row.realMonthlyIncome),
+    expense: Math.round(row.monthlyExpenseNominal),
+  }));
 
   return (
     <div className="card-lg">
       <div className="flex items-baseline justify-between mb-4">
-        <h2 className="text-base font-bold">세후 월 수입 추이 (30년)</h2>
+        <h2 className="text-base font-bold">세후 월 배당 수입 추이</h2>
         <span className="text-xs muted">단위: 만원 · 명목 금액 기준</span>
       </div>
       <div className="h-[260px] md:h-[320px]">
@@ -126,12 +107,19 @@ export function IncomeChart({ result, resultB, strategyBLabel, theme }: IncomeCh
               }}
             />
             <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} iconType="plainline" />
-            <Line type="monotone" dataKey="net" name="세후 월 수입" stroke={colors.schd} strokeWidth={2.5} dot={false} />
+            <Line
+              type="monotone"
+              dataKey="net"
+              name="세후 월 수입"
+              stroke={colors.primary}
+              strokeWidth={2.5}
+              dot={false}
+            />
             <Line
               type="monotone"
               dataKey="real"
               name="실질 구매력"
-              stroke={colors.schd}
+              stroke={colors.primary}
               strokeWidth={1.6}
               strokeDasharray="5 3"
               dot={false}
@@ -144,27 +132,6 @@ export function IncomeChart({ result, resultB, strategyBLabel, theme }: IncomeCh
               strokeWidth={1.2}
               dot={false}
             />
-            {resultB && (
-              <>
-                <Line
-                  type="monotone"
-                  dataKey="netB"
-                  name={`${strategyBLabel ?? '전략 B'} · 세후 월`}
-                  stroke={colors.jepi}
-                  strokeWidth={2.5}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="realB"
-                  name={`${strategyBLabel ?? '전략 B'} · 실질`}
-                  stroke={colors.success}
-                  strokeWidth={1.6}
-                  strokeDasharray="5 3"
-                  dot={false}
-                />
-              </>
-            )}
           </LineChart>
         </ResponsiveContainer>
       </div>

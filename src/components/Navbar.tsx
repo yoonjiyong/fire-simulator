@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type ViewType = 'fire' | 'gift' | 'coin';
+export type ViewType = 'dividend' | 'gift' | 'coin';
 
 interface NavbarProps {
   view: ViewType;
@@ -8,10 +8,10 @@ interface NavbarProps {
   rightSlot?: ReactNode;
 }
 
-const VIEWS: Array<{ key: ViewType; label: string; icon: string }> = [
-  { key: 'fire', label: 'FIRE Calculator', icon: '📈' },
-  { key: 'gift', label: '증여세 계산기', icon: '🎁' },
-  { key: 'coin', label: '코인 레버리지 계산기', icon: '🪙' },
+export const VIEWS: Array<{ key: ViewType; label: string; icon: string; shortcut: string }> = [
+  { key: 'dividend', label: '배당금 계산기', icon: '💰', shortcut: 'Q' },
+  { key: 'gift', label: '증여세 계산기', icon: '🎁', shortcut: 'W' },
+  { key: 'coin', label: '코인 레버리지 계산기', icon: '🪙', shortcut: 'E' },
 ];
 
 export function Navbar({ view, onChange, rightSlot }: NavbarProps) {
@@ -41,6 +41,16 @@ export function Navbar({ view, onChange, rightSlot }: NavbarProps) {
             >
               <span aria-hidden="true">{v.icon}</span>
               <span>{v.label}</span>
+              <span
+                className="text-[10px] font-mono px-1 rounded"
+                style={{
+                  color: 'var(--color-text-tertiary)',
+                  backgroundColor: 'var(--color-bg-secondary)',
+                }}
+                aria-hidden="true"
+              >
+                {v.shortcut}
+              </span>
             </button>
           );
         })}

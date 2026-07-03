@@ -1,29 +1,17 @@
 export type AccountType = 'general' | 'isa' | 'pension' | 'irp';
 
-export interface SimulationParams {
-  schdRatio: number;
-  totalInvestment: number;
-  schdGrowthRate: number;
-  jepiGrowthRate: number;
-  schdDividendYield: number;
-  jepiDividendYield: number;
-  taxRate: number;
-  inflationRate: number;
-  monthlyExpense: number;
-  startAge: number;
-  years: number;
-  accountType: AccountType;
-  exchangeRateShock: number;
+export interface AssetHolding {
+  ticker: string;
+  name: string;
+  accent: string;
+  ratio: number;
+  initialValue: number;
 }
 
 export interface YearResult {
   year: number;
   age: number;
-  schdValue: number;
-  jepiValue: number;
   totalValue: number;
-  schdDividend: number;
-  jepiDividend: number;
   grossDividend: number;
   tax: number;
   netDividend: number;
@@ -37,14 +25,7 @@ export interface YearResult {
 
 export interface SimulationResult {
   rows: YearResult[];
-  schdInitial: number;
-  jepiInitial: number;
+  holdings: AssetHolding[];
   thresholdEnteredYear: number | null;
   effectiveTaxRate: number;
-}
-
-export interface StrategyConfig {
-  label: string;
-  schdRatio: number;
-  schdGrowthRate: number;
 }
