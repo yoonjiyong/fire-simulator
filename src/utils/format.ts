@@ -31,7 +31,7 @@ export function formatInt(value: number): string {
 
 export function formatUSD(value: number): string {
   const sign = value < 0 ? '-' : '';
-  return `${sign}$${Math.abs(value).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  return `${sign}$${Math.abs(value).toLocaleString('en-US', { maximumFractionDigits: 3 })}`;
 }
 
 export function formatKRW(value: number): string {

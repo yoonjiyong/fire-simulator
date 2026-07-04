@@ -7,7 +7,11 @@ import { Navbar, VIEWS, type ViewType } from './components/Navbar';
 import { ThemeToggle } from './components/ThemeToggle';
 import { useTheme } from './hooks/useTheme';
 
-const SHORTCUT_TO_VIEW: Record<string, ViewType> = Object.fromEntries(
+// 물리적 키 위치(e.code)로 매칭 — 한글 등 다른 입력 레이아웃에서도 같은 자리 키가 동작한다.
+const SHORTCUT_CODE_TO_VIEW: Record<string, ViewType> = Object.fromEntries(
+  VIEWS.map((v) => [`Key${v.shortcut.toUpperCase()}`, v.key]),
+);
+const SHORTCUT_KEY_TO_VIEW: Record<string, ViewType> = Object.fromEntries(
   VIEWS.map((v) => [v.shortcut.toLowerCase(), v.key]),
 );
 
@@ -24,7 +28,7 @@ export default function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
-      const target = SHORTCUT_TO_VIEW[e.key.toLowerCase()];
+      const target = SHORTCUT_CODE_TO_VIEW[e.code] ?? SHORTCUT_KEY_TO_VIEW[e.key.toLowerCase()];
       if (target) setView(target);
     };
     window.addEventListener('keydown', handleKeyDown);
