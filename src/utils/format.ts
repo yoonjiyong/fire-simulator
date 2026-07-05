@@ -29,9 +29,9 @@ export function formatInt(value: number): string {
   return Math.round(value).toLocaleString('ko-KR');
 }
 
-export function formatUSD(value: number): string {
+export function formatUSD(value: number, maxDigits = 4): string {
   const sign = value < 0 ? '-' : '';
-  return `${sign}$${Math.abs(value).toLocaleString('en-US', { maximumFractionDigits: 4 })}`;
+  return `${sign}$${Math.abs(value).toLocaleString('en-US', { maximumFractionDigits: maxDigits })}`;
 }
 
 export function formatKRW(value: number): string {

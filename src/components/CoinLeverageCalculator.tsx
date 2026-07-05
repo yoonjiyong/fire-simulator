@@ -18,41 +18,46 @@ function parseMoneyInput(text: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-const COIN_PRICE_STORAGE_KEY = 'coinLeverageCalculator.coinPrice';
+const STORAGE_PREFIX = 'coinLeverageCalculator.';
 
-function loadStoredCoinPrice(): number {
-  try {
-    const raw = window.localStorage.getItem(COIN_PRICE_STORAGE_KEY);
-    const parsed = raw === null ? NaN : Number(raw);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 100;
-  } catch {
-    return 100;
-  }
+function usePersistedNumber(key: string, defaultValue: number): [number, (n: number) => void] {
+  const storageKey = STORAGE_PREFIX + key;
+  const [value, setValue] = useState<number>(() => {
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      const parsed = raw === null ? NaN : Number(raw);
+      return Number.isFinite(parsed) ? parsed : defaultValue;
+    } catch {
+      return defaultValue;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(storageKey, String(value));
+    } catch {
+      // 저장 실패(프라이빗 브라우징 등) 시 무시 — 이번 세션 동안은 정상 동작
+    }
+  }, [storageKey, value]);
+
+  return [value, setValue];
 }
 
 export function CoinLeverageCalculator() {
-  const [totalCapital, setTotalCapital] = useState(20000);
-  const [leverage, setLeverage] = useState(10);
+  const [totalCapital, setTotalCapital] = usePersistedNumber('totalCapital', 20000);
+  const [leverage, setLeverage] = usePersistedNumber('leverage', 10);
   const side: PositionSide = 'long';
-  const [maintenanceMarginPct, setMaintenanceMarginPct] = useState(0.5);
-  const [exchangeRate, setExchangeRate] = useState(1500);
-  const [feeRatePct, setFeeRatePct] = useState(0.05);
+  const [maintenanceMarginPct, setMaintenanceMarginPct] = usePersistedNumber('maintenanceMarginPct', 0.5);
+  const [exchangeRate, setExchangeRate] = usePersistedNumber('exchangeRate', 1500);
+  const [feeRatePct, setFeeRatePct] = usePersistedNumber('feeRatePct', 0.05);
 
-  const [coinPrice, setCoinPrice] = useState(loadStoredCoinPrice);
-  const [initialAmount, setInitialAmount] = useState(2000);
-  const [initialRatio, setInitialRatio] = useState(10);
+  const [coinPrice, setCoinPrice] = usePersistedNumber('coinPrice', 100);
+  const [initialAmount, setInitialAmount] = usePersistedNumber('initialAmount', 2000);
+  const [initialRatio, setInitialRatio] = usePersistedNumber('initialRatio', 10);
   const [targetPrice, setTargetPrice] = useState(100);
 
   const [extraEntries, setExtraEntries] = useState<LadderEntryInput[]>([]);
   const idCounter = useRef(1);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(COIN_PRICE_STORAGE_KEY, String(coinPrice));
-    } catch {
-      // 저장 실패(프라이빗 브라우징 등) 시 무시 — 이번 세션 동안은 정상 동작
-    }
-  }, [coinPrice]);
 
   const initialRatioClamped = clamp(initialRatio, 1, 40);
   const initialRatioPercent = 100 / initialRatioClamped;
@@ -318,20 +323,20 @@ export function CoinLeverageCalculator() {
                       <td className="px-3 py-2 font-semibold whitespace-nowrap">
                         {formatSignedPercent(row.changePct)}
                       </td>
-                      <td
-                        className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap"
-                        style={{ color: netPnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}
-                      >
-                        {formatUSD(netPnl)}
+                      <td className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap muted">
+                        {formatUSD(netPnl, 1)}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums muted whitespace-nowrap">
+                      <td
+                        className="px-3 py-2 text-right tabular-nums whitespace-nowrap"
+                        style={{ color: 'var(--color-success)' }}
+                      >
                         {formatKRW(netPnl * exchangeRate)}
                       </td>
                       <td
                         className="px-3 py-2 text-right tabular-nums whitespace-nowrap"
                         style={{ color: 'var(--color-danger)' }}
                       >
-                        -{formatUSD(totalFee)}
+                        -{formatUSD(totalFee, 1)}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{formatUSD(row.price)}</td>
                       <td
