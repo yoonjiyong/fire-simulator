@@ -18,20 +18,41 @@ function parseMoneyInput(text: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+const COIN_PRICE_STORAGE_KEY = 'coinLeverageCalculator.coinPrice';
+
+function loadStoredCoinPrice(): number {
+  try {
+    const raw = window.localStorage.getItem(COIN_PRICE_STORAGE_KEY);
+    const parsed = raw === null ? NaN : Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 100;
+  } catch {
+    return 100;
+  }
+}
+
 export function CoinLeverageCalculator() {
   const [totalCapital, setTotalCapital] = useState(20000);
   const [leverage, setLeverage] = useState(10);
   const side: PositionSide = 'long';
   const [maintenanceMarginPct, setMaintenanceMarginPct] = useState(0.5);
   const [exchangeRate, setExchangeRate] = useState(1500);
+  const [feeRatePct, setFeeRatePct] = useState(0.05);
 
-  const [coinPrice, setCoinPrice] = useState(100);
+  const [coinPrice, setCoinPrice] = useState(loadStoredCoinPrice);
   const [initialAmount, setInitialAmount] = useState(2000);
   const [initialRatio, setInitialRatio] = useState(10);
   const [targetPrice, setTargetPrice] = useState(100);
 
   const [extraEntries, setExtraEntries] = useState<LadderEntryInput[]>([]);
   const idCounter = useRef(1);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(COIN_PRICE_STORAGE_KEY, String(coinPrice));
+    } catch {
+      // 저장 실패(프라이빗 브라우징 등) 시 무시 — 이번 세션 동안은 정상 동작
+    }
+  }, [coinPrice]);
 
   const initialRatioClamped = clamp(initialRatio, 1, 40);
   const initialRatioPercent = 100 / initialRatioClamped;
@@ -205,6 +226,15 @@ export function CoinLeverageCalculator() {
               onChange={setCoinPrice}
               hint="최초 진입 시점의 실제 코인 시장가 (평단가·청산가 계산에 사용)"
             />
+            <NumberInput
+              label="거래 수수료 (%, 편도)"
+              value={feeRatePct}
+              onChange={setFeeRatePct}
+              min={0}
+              max={1}
+              step={0.001}
+              hint="OKX 테이커 0.05% 기준 (메이커 0.02%) · 진입+청산 왕복 반영"
+            />
           </div>
 
           <div>
@@ -252,8 +282,8 @@ export function CoinLeverageCalculator() {
           <h2 className="text-base font-bold mb-1">평단가 기준 수익 시뮬레이션</h2>
           <p className="text-xs muted mb-3">
             평단가 {formatUSD(current.avgPrice)} 대비 유리한 방향({side === 'long' ? '상승' : '하락'})으로 0.3%~10.0%
-            움직였을 때 예상 수익 (0.1%p 단위, 수수료·펀딩비 미반영). 손실·청산 위험은 상단 청산가·청산까지 여유를
-            참고하세요.
+            움직였을 때 예상 수익 (0.1%p 단위, 펀딩비 미반영). 거래 수수료는 진입+청산 왕복 기준으로 순손익에 반영했습니다.
+            손실·청산 위험은 상단 청산가·청산까지 여유를 참고하세요.
           </p>
           <div
             className="overflow-x-auto rounded-lg border max-h-[762px] overflow-y-auto"
@@ -267,39 +297,61 @@ export function CoinLeverageCalculator() {
                 <tr>
                   <th className="px-3 py-2 text-left whitespace-nowrap">변동률</th>
                   <th className="px-3 py-2 text-right whitespace-nowrap">가격 (USD)</th>
-                  <th className="px-3 py-2 text-right whitespace-nowrap">포지션 가치 (USD)</th>
                   <th className="px-3 py-2 text-right whitespace-nowrap">수익 (USD)</th>
-                  <th className="px-3 py-2 text-right whitespace-nowrap">수익 (KRW)</th>
-                  <th className="px-3 py-2 text-right whitespace-nowrap">ROE</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">수수료 (USD)</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">순손익 (USD)</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">순손익 (KRW)</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">순 ROE</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">포지션 가치 (USD)</th>
                 </tr>
               </thead>
               <tbody>
-                {pnlRows.map((row) => (
-                  <tr key={row.changePct} className="border-t" style={{ borderColor: 'var(--color-border)' }}>
-                    <td className="px-3 py-2 font-semibold whitespace-nowrap">
-                      {formatSignedPercent(row.changePct)}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{formatUSD(row.price)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums muted whitespace-nowrap">
-                      {formatUSD(current.cumMargin * leverage * (1 + row.changePct))}
-                    </td>
-                    <td
-                      className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap"
-                      style={{ color: 'var(--color-success)' }}
-                    >
-                      {formatUSD(row.pnl)}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums muted whitespace-nowrap">
-                      {formatKRW(row.pnl * exchangeRate)}
-                    </td>
-                    <td
-                      className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap"
-                      style={{ color: 'var(--color-success)' }}
-                    >
-                      {formatSignedPercent(row.roe)}
-                    </td>
-                  </tr>
-                ))}
+                {pnlRows.map((row) => {
+                  const feeRate = feeRatePct / 100;
+                  const entryFee = current.cumMargin * leverage * feeRate;
+                  const exitFee = current.cumQty * row.price * feeRate;
+                  const totalFee = entryFee + exitFee;
+                  const netPnl = row.pnl - totalFee;
+                  const netRoe = current.cumMargin > 0 ? netPnl / current.cumMargin : 0;
+                  return (
+                    <tr key={row.changePct} className="border-t" style={{ borderColor: 'var(--color-border)' }}>
+                      <td className="px-3 py-2 font-semibold whitespace-nowrap">
+                        {formatSignedPercent(row.changePct)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{formatUSD(row.price)}</td>
+                      <td
+                        className="px-3 py-2 text-right tabular-nums whitespace-nowrap"
+                        style={{ color: 'var(--color-success)' }}
+                      >
+                        {formatUSD(row.pnl)}
+                      </td>
+                      <td
+                        className="px-3 py-2 text-right tabular-nums whitespace-nowrap"
+                        style={{ color: 'var(--color-danger)' }}
+                      >
+                        -{formatUSD(totalFee)}
+                      </td>
+                      <td
+                        className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap"
+                        style={{ color: netPnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}
+                      >
+                        {formatUSD(netPnl)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums muted whitespace-nowrap">
+                        {formatKRW(netPnl * exchangeRate)}
+                      </td>
+                      <td
+                        className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap"
+                        style={{ color: netRoe >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}
+                      >
+                        {formatSignedPercent(netRoe)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums muted whitespace-nowrap">
+                        {formatUSD(current.cumMargin * leverage * (1 + row.changePct))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
