@@ -55,6 +55,7 @@ export function CoinLeverageCalculator() {
   const [initialAmount, setInitialAmount] = usePersistedNumber('initialAmount', 2000);
   const [initialRatio, setInitialRatio] = usePersistedNumber('initialRatio', 10);
   const [targetPrice, setTargetPrice] = usePersistedNumber('targetPrice', 100);
+  const [pnlUsdInput, setPnlUsdInput] = useState(100);
 
   const [extraEntries, setExtraEntries] = useState<LadderEntryInput[]>([]);
   const idCounter = useRef(1);
@@ -159,7 +160,7 @@ export function CoinLeverageCalculator() {
       </header>
 
       {/* 결과 하이라이트 */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <ResultCard label="평단가" value={formatUSD(current.avgPrice)} />
         <ResultCard
           label="청산가"
@@ -178,6 +179,7 @@ export function CoinLeverageCalculator() {
           value={formatUSD(current.cumMargin * leverage)}
           accent="var(--color-schd)"
         />
+        <PnlKrwCard value={pnlUsdInput} onChange={setPnlUsdInput} exchangeRate={exchangeRate} />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4 items-start">
@@ -553,6 +555,64 @@ function ResultCard({
         style={{ color: accent }}
       >
         {value}
+      </div>
+    </div>
+  );
+}
+
+function PnlKrwCard({
+  value,
+  onChange,
+  exchangeRate,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  exchangeRate: number;
+}) {
+  const [text, setText] = useState(formatMoneyDisplay(value));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setText(formatMoneyDisplay(value));
+  }, [value, focused]);
+
+  const commit = () => {
+    setFocused(false);
+    const parsed = parseMoneyInput(text);
+    setText(formatMoneyDisplay(parsed));
+    onChange(parsed);
+  };
+
+  return (
+    <div className="card min-w-0">
+      <div className="text-xs muted mb-1 truncate">손익 환산 (USD → KRW)</div>
+      <div className="flex items-center gap-1">
+        <span className="text-sm font-bold muted">$</span>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={text}
+          onFocus={() => setFocused(true)}
+          onChange={(e) => {
+            setText(e.target.value);
+            const parsed = Number(e.target.value.replace(/,/g, ''));
+            if (Number.isFinite(parsed)) onChange(parsed);
+          }}
+          onBlur={commit}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          className="w-full min-w-0 px-1 py-0.5 rounded-md border tabular-nums text-base font-bold"
+          style={{
+            backgroundColor: 'var(--color-surface)',
+            borderColor: 'var(--color-border)',
+            color: 'var(--color-text)',
+          }}
+        />
+      </div>
+      <div
+        className="font-bold tabular-nums break-words text-lg md:text-xl mt-1"
+        style={{ color: 'var(--color-success)' }}
+      >
+        {formatKRW(value * exchangeRate)}
       </div>
     </div>
   );
