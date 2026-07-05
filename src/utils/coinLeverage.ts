@@ -88,5 +88,7 @@ export function buildPnlTable(
   });
 }
 
-// 0.3% ~ 10.0% 구간을 0.1%p 단위로 생성 (98개)
-export const DEFAULT_PNL_CHANGES = Array.from({ length: 98 }, (_, i) => (i + 3) / 1000);
+// 0.3% ~ 10.0% 구간은 0.1%p 단위(98개), 10% ~ 200% 구간은 1%p 단위(190개)로 생성
+const FINE_PNL_CHANGES = Array.from({ length: 98 }, (_, i) => (i + 3) / 1000);
+const COARSE_PNL_CHANGES = Array.from({ length: 190 }, (_, i) => (i + 11) / 100);
+export const DEFAULT_PNL_CHANGES = [...FINE_PNL_CHANGES, ...COARSE_PNL_CHANGES];

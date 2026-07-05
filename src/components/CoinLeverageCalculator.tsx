@@ -286,9 +286,9 @@ export function CoinLeverageCalculator() {
         <div className="card-lg">
           <h2 className="text-base font-bold mb-1">평단가 기준 수익 시뮬레이션</h2>
           <p className="text-xs muted mb-3">
-            평단가 {formatUSD(current.avgPrice)} 대비 유리한 방향({side === 'long' ? '상승' : '하락'})으로 0.3%~10.0%
-            움직였을 때 예상 수익 (0.1%p 단위, 펀딩비 미반영). 거래 수수료는 진입+청산 왕복 기준으로 순손익에 반영했습니다.
-            손실·청산 위험은 상단 청산가·청산까지 여유를 참고하세요.
+            평단가 {formatUSD(current.avgPrice)} 대비 유리한 방향({side === 'long' ? '상승' : '하락'})으로 0.3%~200%
+            움직였을 때 예상 수익 (10%까지는 0.1%p, 이후 200%까지는 1%p 단위, 펀딩비 미반영). 거래 수수료는
+            진입+청산 왕복 기준으로 순손익에 반영했습니다. 손실·청산 위험은 상단 청산가·청산까지 여유를 참고하세요.
           </p>
           <div
             className="overflow-x-auto rounded-lg border max-h-[762px] overflow-y-auto"
