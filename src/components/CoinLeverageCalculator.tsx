@@ -49,7 +49,7 @@ export function CoinLeverageCalculator() {
   const side: PositionSide = 'long';
   const [maintenanceMarginPct, setMaintenanceMarginPct] = usePersistedNumber('maintenanceMarginPct', 0.5);
   const [exchangeRate, setExchangeRate] = usePersistedNumber('exchangeRate', 1500);
-  const [feeRatePct, setFeeRatePct] = usePersistedNumber('feeRatePct', 0.05);
+  const [feeRatePct, setFeeRatePct] = usePersistedNumber('feeRatePct', 0.02);
 
   const [coinPrice, setCoinPrice] = usePersistedNumber('coinPrice', 100);
   const [initialAmount, setInitialAmount] = usePersistedNumber('initialAmount', 2000);
@@ -238,7 +238,7 @@ export function CoinLeverageCalculator() {
               min={0}
               max={1}
               step={0.001}
-              hint="OKX 테이커 0.05% 기준 (메이커 0.02%) · 진입+청산 왕복 반영"
+              hint="OKX 메이커(지정가) 0.02% 기준 (테이커 0.05%) · 진입+청산 왕복 반영"
             />
           </div>
 
