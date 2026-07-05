@@ -296,11 +296,11 @@ export function CoinLeverageCalculator() {
               >
                 <tr>
                   <th className="px-3 py-2 text-left whitespace-nowrap">변동률</th>
-                  <th className="px-3 py-2 text-right whitespace-nowrap">가격 (USD)</th>
-                  <th className="px-3 py-2 text-right whitespace-nowrap">수익 (USD)</th>
-                  <th className="px-3 py-2 text-right whitespace-nowrap">수수료 (USD)</th>
                   <th className="px-3 py-2 text-right whitespace-nowrap">순손익 (USD)</th>
                   <th className="px-3 py-2 text-right whitespace-nowrap">순손익 (KRW)</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">수수료 (USD)</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">가격 (USD)</th>
+                  <th className="px-3 py-2 text-right whitespace-nowrap">수익 (USD)</th>
                   <th className="px-3 py-2 text-right whitespace-nowrap">순 ROE</th>
                   <th className="px-3 py-2 text-right whitespace-nowrap">포지션 가치 (USD)</th>
                 </tr>
@@ -318,19 +318,6 @@ export function CoinLeverageCalculator() {
                       <td className="px-3 py-2 font-semibold whitespace-nowrap">
                         {formatSignedPercent(row.changePct)}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{formatUSD(row.price)}</td>
-                      <td
-                        className="px-3 py-2 text-right tabular-nums whitespace-nowrap"
-                        style={{ color: 'var(--color-success)' }}
-                      >
-                        {formatUSD(row.pnl)}
-                      </td>
-                      <td
-                        className="px-3 py-2 text-right tabular-nums whitespace-nowrap"
-                        style={{ color: 'var(--color-danger)' }}
-                      >
-                        -{formatUSD(totalFee)}
-                      </td>
                       <td
                         className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap"
                         style={{ color: netPnl >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}
@@ -339,6 +326,19 @@ export function CoinLeverageCalculator() {
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums muted whitespace-nowrap">
                         {formatKRW(netPnl * exchangeRate)}
+                      </td>
+                      <td
+                        className="px-3 py-2 text-right tabular-nums whitespace-nowrap"
+                        style={{ color: 'var(--color-danger)' }}
+                      >
+                        -{formatUSD(totalFee)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{formatUSD(row.price)}</td>
+                      <td
+                        className="px-3 py-2 text-right tabular-nums whitespace-nowrap"
+                        style={{ color: 'var(--color-success)' }}
+                      >
+                        {formatUSD(row.pnl)}
                       </td>
                       <td
                         className="px-3 py-2 text-right tabular-nums font-semibold whitespace-nowrap"

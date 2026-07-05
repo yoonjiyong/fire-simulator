@@ -21,9 +21,29 @@ function isTypingTarget(el: EventTarget | null): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
 }
 
+const LAST_VIEW_STORAGE_KEY = 'app.lastView';
+const VALID_VIEWS = new Set(VIEWS.map((v) => v.key));
+
+function loadStoredView(): ViewType {
+  try {
+    const raw = window.localStorage.getItem(LAST_VIEW_STORAGE_KEY);
+    return raw && VALID_VIEWS.has(raw as ViewType) ? (raw as ViewType) : 'dividend';
+  } catch {
+    return 'dividend';
+  }
+}
+
 export default function App() {
-  const [view, setView] = useState<ViewType>('dividend');
+  const [view, setView] = useState<ViewType>(loadStoredView);
   const { theme, setTheme } = useTheme();
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(LAST_VIEW_STORAGE_KEY, view);
+    } catch {
+      // 저장 실패(프라이빗 브라우징 등) 시 무시 — 이번 세션 동안은 정상 동작
+    }
+  }, [view]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
