@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import type { LadderEntryInput, PositionSide } from '../types/coin';
 import { DEFAULT_PNL_CHANGES, buildLadder, buildPnlTable } from '../utils/coinLeverage';
 import { formatKRW, formatSignedPercent, formatUSD } from '../utils/format';
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
+
+function isTypingTarget(el: EventTarget | null): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  const tag = el.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+}
 
 function formatMoneyDisplay(value: number): string {
   if (!Number.isFinite(value)) return '';
@@ -16,6 +23,19 @@ function formatMoneyDisplay(value: number): string {
 function parseMoneyInput(text: string): number {
   const n = Number(text.replace(/,/g, '').trim());
   return Number.isFinite(n) ? n : 0;
+}
+
+// 타이핑 중에도 정수부에 3자리 콤마를 넣어주되, 끝의 소수점("100.")처럼
+// 입력 중인 상태는 그대로 보존한다.
+function formatLiveMoneyInput(raw: string): string {
+  const negative = raw.includes('-');
+  const cleaned = raw.replace(/[^0-9.]/g, '');
+  const dotIndex = cleaned.indexOf('.');
+  const intRaw = dotIndex === -1 ? cleaned : cleaned.slice(0, dotIndex);
+  const decRaw = dotIndex === -1 ? undefined : cleaned.slice(dotIndex + 1).replace(/\./g, '');
+  const intGrouped = intRaw === '' ? '' : Number(intRaw).toLocaleString('en-US');
+  const result = decRaw === undefined ? intGrouped : `${intGrouped}.${decRaw}`;
+  return negative ? `-${result}` : result;
 }
 
 const STORAGE_PREFIX = 'coinLeverageCalculator.';
@@ -59,6 +79,26 @@ export function CoinLeverageCalculator() {
 
   const [extraEntries, setExtraEntries] = useState<LadderEntryInput[]>([]);
   const idCounter = useRef(1);
+
+  const pnlKrwInputRef = useRef<HTMLInputElement>(null);
+  const initialAmountInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
+      if (e.key === '/' && pnlKrwInputRef.current?.offsetParent !== null) {
+        e.preventDefault();
+        pnlKrwInputRef.current?.focus();
+        pnlKrwInputRef.current?.select();
+      } else if (e.key === '.' && initialAmountInputRef.current?.offsetParent !== null) {
+        e.preventDefault();
+        initialAmountInputRef.current?.focus();
+        initialAmountInputRef.current?.select();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const initialRatioClamped = clamp(initialRatio, 1, 40);
   const initialRatioPercent = 100 / initialRatioClamped;
@@ -179,7 +219,12 @@ export function CoinLeverageCalculator() {
           value={formatUSD(current.cumMargin * leverage)}
           accent="var(--color-schd)"
         />
-        <PnlKrwCard value={pnlUsdInput} onChange={setPnlUsdInput} exchangeRate={exchangeRate} />
+        <PnlKrwCard
+          value={pnlUsdInput}
+          onChange={setPnlUsdInput}
+          exchangeRate={exchangeRate}
+          inputRef={pnlKrwInputRef}
+        />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4 items-start">
@@ -206,6 +251,7 @@ export function CoinLeverageCalculator() {
               label="투입 금액 (USD)"
               value={initialAmount}
               onChange={setInitialAmount}
+              inputRef={initialAmountInputRef}
               hint={`비율 변경 시 자동 재계산 (직접 수정 가능) · 현재 총자금의 ${initialAmountRatioPercent.toFixed(1)}%`}
             />
             <NumberInput
@@ -564,10 +610,12 @@ function PnlKrwCard({
   value,
   onChange,
   exchangeRate,
+  inputRef,
 }: {
   value: number;
   onChange: (n: number) => void;
   exchangeRate: number;
+  inputRef?: RefObject<HTMLInputElement>;
 }) {
   const [text, setText] = useState(formatMoneyDisplay(value));
   const [focused, setFocused] = useState(false);
@@ -589,13 +637,15 @@ function PnlKrwCard({
       <div className="flex items-center gap-1">
         <span className="text-sm font-bold muted">$</span>
         <input
+          ref={inputRef}
           type="text"
           inputMode="decimal"
           value={text}
           onFocus={() => setFocused(true)}
           onChange={(e) => {
-            setText(e.target.value);
-            const parsed = Number(e.target.value.replace(/,/g, ''));
+            const formatted = formatLiveMoneyInput(e.target.value);
+            setText(formatted);
+            const parsed = Number(formatted.replace(/,/g, ''));
             if (Number.isFinite(parsed)) onChange(parsed);
           }}
           onBlur={commit}
@@ -683,11 +733,13 @@ function MoneyInput({
   value,
   onChange,
   hint,
+  inputRef,
 }: {
   label: string;
   value: number;
   onChange: (n: number) => void;
   hint?: string;
+  inputRef?: RefObject<HTMLInputElement>;
 }) {
   const [text, setText] = useState(formatMoneyDisplay(value));
   const [focused, setFocused] = useState(false);
@@ -700,6 +752,7 @@ function MoneyInput({
     <div>
       <label className="text-sm font-semibold block mb-2">{label}</label>
       <input
+        ref={inputRef}
         type="text"
         inputMode="decimal"
         value={text}
