@@ -54,7 +54,7 @@ export function CoinLeverageCalculator() {
   const [coinPrice, setCoinPrice] = usePersistedNumber('coinPrice', 100);
   const [initialAmount, setInitialAmount] = usePersistedNumber('initialAmount', 2000);
   const [initialRatio, setInitialRatio] = usePersistedNumber('initialRatio', 10);
-  const [targetPrice, setTargetPrice] = useState(100);
+  const [targetPrice, setTargetPrice] = usePersistedNumber('targetPrice', 100);
 
   const [extraEntries, setExtraEntries] = useState<LadderEntryInput[]>([]);
   const idCounter = useRef(1);
@@ -245,10 +245,10 @@ export function CoinLeverageCalculator() {
           <div>
             <h3 className="text-sm font-bold mb-1">목표가 손익 계산</h3>
             <p className="text-xs muted mb-3">
-              현재(또는 목표) 가격을 입력하면 평단가 {formatUSD(current.avgPrice)} 대비 변동률과 손익을 계산합니다.
+              목표 가격을 입력하면 평단가 {formatUSD(current.avgPrice)} 대비 변동률과 손익을 계산합니다.
             </p>
             <MoneyInput
-              label="현재 가격 (USD)"
+              label="목표 가격 (USD)"
               value={targetPrice}
               onChange={setTargetPrice}
               hint={targetIsLiquidated ? '이 가격에서는 이미 청산됩니다' : undefined}
