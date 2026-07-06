@@ -47,6 +47,13 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        const active = document.activeElement;
+        if (active instanceof HTMLElement && active !== document.body) {
+          active.blur();
+        }
+        return;
+      }
       if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
       const target = SHORTCUT_CODE_TO_VIEW[e.code] ?? SHORTCUT_KEY_TO_VIEW[e.key.toLowerCase()];
       if (target) setView(target);
