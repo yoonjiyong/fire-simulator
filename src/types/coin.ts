@@ -19,6 +19,7 @@ export interface LadderRowResult {
   changeFromFirst: number; // 최초 진입가 대비 변동률 (-0.1 = -10%)
   stagePnl: number; // 이 단계 가격 기준 평가손익 (USD)
   stageRoe: number; // 이 단계 기준 수익률 (누적 증거금 대비)
+  isUnreachable: boolean; // 이전 단계 청산가를 이미 지난 가격이라 실제로는 도달 불가능한 단계
 }
 
 export interface CoinLeverageParams {

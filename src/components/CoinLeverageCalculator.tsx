@@ -149,6 +149,7 @@ export function CoinLeverageCalculator() {
   const totalRatioUsed = entries.reduce((sum, e) => sum + e.ratio, 0);
   const remainingRatio = 100 - totalRatioUsed;
   const isOverBudget = remainingRatio < 0;
+  const hasUnreachableEntry = ladder.some((row) => row.isUnreachable);
 
   const liqDistance =
     current.avgPrice > 0
@@ -184,7 +185,7 @@ export function CoinLeverageCalculator() {
       {
         id: `entry-${idCounter.current}`,
         price: Math.round(lastPrice * step * 100) / 100,
-        ratio: Math.max(1, Math.min(5, remainingRatio)),
+        ratio: Math.max(0.1, Math.min(initialAmountRatioPercent, remainingRatio)),
       },
     ]);
   };
@@ -478,6 +479,13 @@ export function CoinLeverageCalculator() {
           </span>
         </div>
 
+        {hasUnreachableEntry && (
+          <p className="text-xs" style={{ color: 'var(--color-danger)' }}>
+            ⚠ "도달 불가" 표시된 단계는 그 가격에 닿기 전에 이전 단계 청산가를 먼저 지나므로 실제로는 실행될 수
+            없습니다. 진입가·비율을 조정해보세요.
+          </p>
+        )}
+
         <div className="overflow-x-auto rounded-lg border" style={{ borderColor: 'var(--color-border)' }}>
           <table className="w-full text-sm">
             <thead
@@ -500,9 +508,30 @@ export function CoinLeverageCalculator() {
               {ladder.map((row, idx) => {
                 const isInitial = idx === 0;
                 return (
-                  <tr key={row.id} className="border-t" style={{ borderColor: 'var(--color-border)' }}>
+                  <tr
+                    key={row.id}
+                    className="border-t"
+                    style={{
+                      borderColor: 'var(--color-border)',
+                      backgroundColor: row.isUnreachable
+                        ? 'color-mix(in srgb, var(--color-danger) 8%, transparent)'
+                        : undefined,
+                    }}
+                  >
                     <td className="px-3 py-2 font-semibold whitespace-nowrap">
                       {isInitial ? '최초' : `물타기 ${idx}`}
+                      {row.isUnreachable && (
+                        <span
+                          className="chip ml-1.5"
+                          style={{
+                            backgroundColor: 'color-mix(in srgb, var(--color-danger) 18%, transparent)',
+                            color: 'var(--color-danger)',
+                          }}
+                          title="이전 단계 청산가를 이미 지난 가격이라 실제로는 그 전에 청산되어 도달할 수 없습니다"
+                        >
+                          도달 불가
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-right">
                       {isInitial ? (

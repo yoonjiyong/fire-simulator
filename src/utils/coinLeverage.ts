@@ -35,10 +35,18 @@ export function buildLadder(params: CoinLeverageParams): LadderRowResult[] {
 
   let cumMargin = 0;
   let cumQty = 0;
+  let prevLiqPrice = 0;
 
-  return entries.map((entry: LadderEntryInput) => {
+  return entries.map((entry: LadderEntryInput, idx) => {
     const margin = (totalCapital * entry.ratio) / 100;
     const qty = entry.price > 0 ? (margin * leverage) / entry.price : 0;
+
+    // 이전 단계까지의 청산가를 이미 지난 가격이면, 실제로는 그 전에 청산되어
+    // 이 단계에 도달할 수 없다.
+    const isUnreachable =
+      idx > 0 &&
+      prevLiqPrice > 0 &&
+      (side === 'long' ? entry.price <= prevLiqPrice : entry.price >= prevLiqPrice);
 
     cumMargin += margin;
     cumQty += qty;
@@ -49,6 +57,8 @@ export function buildLadder(params: CoinLeverageParams): LadderRowResult[] {
 
     const stagePnl = side === 'long' ? cumQty * (entry.price - avgPrice) : cumQty * (avgPrice - entry.price);
     const stageRoe = cumMargin > 0 ? stagePnl / cumMargin : 0;
+
+    prevLiqPrice = liqPrice;
 
     return {
       id: entry.id,
@@ -63,6 +73,7 @@ export function buildLadder(params: CoinLeverageParams): LadderRowResult[] {
       changeFromFirst,
       stagePnl,
       stageRoe,
+      isUnreachable,
     };
   });
 }
