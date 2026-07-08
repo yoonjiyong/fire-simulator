@@ -75,13 +75,20 @@ export function CoinLeverageCalculator() {
   const [initialAmount, setInitialAmount] = usePersistedNumber('initialAmount', 2000);
   const [initialRatio, setInitialRatio] = usePersistedNumber('initialRatio', 10);
   const [targetPrice, setTargetPrice] = usePersistedNumber('targetPrice', 100);
-  const [pnlUsdInput, setPnlUsdInput] = useState(100);
+  const [pnlUsdInput, setPnlUsdInput] = usePersistedNumber('pnlUsdInput', 100);
 
   const [extraEntries, setExtraEntries] = useState<LadderEntryInput[]>([]);
   const idCounter = useRef(1);
+  const [noRoomFlash, setNoRoomFlash] = useState(false);
 
   const pnlKrwInputRef = useRef<HTMLInputElement>(null);
   const initialAmountInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!noRoomFlash) return;
+    const timer = setTimeout(() => setNoRoomFlash(false), 2500);
+    return () => clearTimeout(timer);
+  }, [noRoomFlash]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -165,6 +172,10 @@ export function CoinLeverageCalculator() {
   );
 
   const addEntry = () => {
+    if (remainingRatio <= 0) {
+      setNoRoomFlash(true);
+      return;
+    }
     const lastPrice = entries[entries.length - 1]?.price ?? coinPrice;
     const step = side === 'long' ? 0.95 : 1.05;
     idCounter.current += 1;
@@ -200,7 +211,10 @@ export function CoinLeverageCalculator() {
       </header>
 
       {/* 결과 하이라이트 */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+      <div
+        className="grid grid-cols-2 md:grid-cols-6 gap-3 sticky top-20 z-10 py-2 -mx-2 px-2 rounded-xl"
+        style={{ backgroundColor: 'color-mix(in srgb, var(--color-bg) 92%, transparent)', backdropFilter: 'blur(4px)' }}
+      >
         <ResultCard label="평단가" value={formatUSD(current.avgPrice)} />
         <ResultCard
           label="청산가"
@@ -413,9 +427,14 @@ export function CoinLeverageCalculator() {
 
       {/* 물타기 사다리 */}
       <div className="card-lg space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <h2 className="text-base font-bold">물타기 단계</h2>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {noRoomFlash && (
+              <span className="text-xs font-semibold" style={{ color: 'var(--color-danger)' }}>
+                더 이상 탈 물이 없습니다 (투입 비율 100% 소진)
+              </span>
+            )}
             <button
               type="button"
               onClick={resetEntries}
@@ -432,8 +451,7 @@ export function CoinLeverageCalculator() {
             <button
               type="button"
               onClick={addEntry}
-              disabled={remainingRatio <= 0}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
               style={{
                 borderColor: 'var(--color-schd)',
                 color: 'var(--color-schd)',
