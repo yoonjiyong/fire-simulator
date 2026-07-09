@@ -24,20 +24,28 @@ function isTypingTarget(el: EventTarget | null): boolean {
 const LAST_VIEW_STORAGE_KEY = 'app.lastView';
 const VALID_VIEWS = new Set(VIEWS.map((v) => v.key));
 
+function toValidView(raw: string | null): ViewType | null {
+  return raw && VALID_VIEWS.has(raw as ViewType) ? (raw as ViewType) : null;
+}
+
+// ?embed=coin 처럼 쿼리 파라미터로 특정 탭만 강제 노출 + 탭바 숨김(모바일 앱 웹뷰 임베드용).
+// URL 쿼리는 앱 수명 동안 고정이므로 모듈 로드 시 1회만 계산한다.
+const EMBED_VIEW = toValidView(new URLSearchParams(window.location.search).get('embed'));
+
 function loadStoredView(): ViewType {
   try {
-    const raw = window.localStorage.getItem(LAST_VIEW_STORAGE_KEY);
-    return raw && VALID_VIEWS.has(raw as ViewType) ? (raw as ViewType) : 'dividend';
+    return toValidView(window.localStorage.getItem(LAST_VIEW_STORAGE_KEY)) ?? 'dividend';
   } catch {
     return 'dividend';
   }
 }
 
 export default function App() {
-  const [view, setView] = useState<ViewType>(loadStoredView);
+  const [view, setView] = useState<ViewType>(() => EMBED_VIEW ?? loadStoredView());
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
+    if (EMBED_VIEW) return;
     try {
       window.localStorage.setItem(LAST_VIEW_STORAGE_KEY, view);
     } catch {
@@ -65,11 +73,17 @@ export default function App() {
   return (
     <div className="min-h-full" style={{ backgroundColor: 'var(--color-bg)' }}>
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-10 space-y-6">
-        <Navbar
-          view={view}
-          onChange={setView}
-          rightSlot={<ThemeToggle theme={theme} onChange={setTheme} />}
-        />
+        {EMBED_VIEW ? (
+          <div className="flex justify-end pt-4">
+            <ThemeToggle theme={theme} onChange={setTheme} />
+          </div>
+        ) : (
+          <Navbar
+            view={view}
+            onChange={setView}
+            rightSlot={<ThemeToggle theme={theme} onChange={setTheme} />}
+          />
+        )}
 
         <div className={view === 'dividend' ? undefined : 'hidden'}>
           <DividendCalculator theme={theme} />
