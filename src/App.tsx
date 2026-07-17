@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { CoinLeverageCalculator } from './components/CoinLeverageCalculator';
 import { DividendCalculator } from './components/DividendCalculator';
 import { Footer } from './components/Footer';
+import { FundingFeeCalculator } from './components/FundingFeeCalculator';
 import { GiftTaxCalculator } from './components/GiftTaxCalculator';
 import { Navbar, VIEWS, type ViewType } from './components/Navbar';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -93,6 +94,9 @@ export default function App() {
         </div>
         <div className={view === 'coin' ? undefined : 'hidden'}>
           <CoinLeverageCalculator />
+        </div>
+        <div className={view === 'funding' ? undefined : 'hidden'}>
+          <FundingFeeCalculator />
         </div>
 
         <Footer />

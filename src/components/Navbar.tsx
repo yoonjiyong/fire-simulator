@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type ViewType = 'dividend' | 'gift' | 'coin';
+export type ViewType = 'dividend' | 'gift' | 'coin' | 'funding';
 
 interface NavbarProps {
   view: ViewType;
@@ -12,6 +12,7 @@ export const VIEWS: Array<{ key: ViewType; label: string; icon: string; shortcut
   { key: 'dividend', label: '배당금 계산기', icon: '💰', shortcut: 'Q' },
   { key: 'gift', label: '증여세 계산기', icon: '🎁', shortcut: 'W' },
   { key: 'coin', label: '코인 레버리지 계산기', icon: '🪙', shortcut: 'E' },
+  { key: 'funding', label: 'XRP 펀비 계산기', icon: '💸', shortcut: 'R' },
 ];
 
 export function Navbar({ view, onChange, rightSlot }: NavbarProps) {
