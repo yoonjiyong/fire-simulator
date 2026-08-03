@@ -1,6 +1,9 @@
 export type MarketRegime = 'bull' | 'bear' | 'sideways';
 
-/** 바이낸스 XRPUSDT 펀딩비 이력의 월별 집계 (scripts/fetchFundingHistory.mjs 생성) */
+/** 펀비 계산기가 지원하는 코인. data/coinFunding.ts 의 키와 1:1 대응. */
+export type CoinKey = 'BTC' | 'ETH' | 'XRP' | 'SOL';
+
+/** 바이낸스 무기한 선물 펀딩비 이력의 월별 집계 (scripts/fetchFundingHistory.mjs 생성) */
 export interface FundingMonth {
   month: string; // 'YYYY-MM' (UTC)
   firstPrice: number; // 월 첫 정산 시점 마크가 (USD)

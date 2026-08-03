@@ -1,11 +1,27 @@
-import { FUNDING_MONTHS } from '../data/xrpFunding';
+import { FUNDING_BY_COIN } from '../data/coinFunding';
 import type {
+  CoinKey,
   FundingMonth,
   FundingParams,
   FundingRegimeSummary,
   FundingResult,
   MarketRegime,
 } from '../types/funding';
+
+/** 선택 가능한 코인 (탭 표시 순서). scripts/fetchFundingHistory.mjs 의 COINS 와 키가 같아야 한다. */
+export const COIN_KEYS: readonly CoinKey[] = ['BTC', 'ETH', 'XRP', 'SOL'];
+
+export const COIN_META: Record<CoinKey, { label: string; symbol: string; icon: string }> = {
+  BTC: { label: '비트코인', symbol: 'BTCUSDT', icon: '₿' },
+  ETH: { label: '이더리움', symbol: 'ETHUSDT', icon: 'Ξ' },
+  XRP: { label: '리플', symbol: 'XRPUSDT', icon: '✕' },
+  SOL: { label: '솔라나', symbol: 'SOLUSDT', icon: '◎' },
+};
+
+/** 해당 코인의 월별 펀딩비 이력 (오래된 달 → 최근 달). */
+export function fundingMonths(coin: CoinKey): FundingMonth[] {
+  return FUNDING_BY_COIN[coin] ?? [];
+}
 
 /** 1배 숏은 유지증거금을 감안하면 가격이 약 2배가 될 때 청산된다. */
 const MAINTENANCE_MARGIN_RATE = 0.005;
@@ -100,7 +116,7 @@ export function simulateFunding(params: FundingParams): FundingResult {
 }
 
 export interface BacktestPreset {
-  key: string;
+  key: PresetKey;
   label: string;
   description: string;
   from: string; // 'YYYY-MM'
@@ -108,8 +124,8 @@ export interface BacktestPreset {
 }
 
 /** 프리셋 구간에 해당하는 월 데이터를 잘라낸다. */
-export function sliceMonths(from: string, to: string): FundingMonth[] {
-  return FUNDING_MONTHS.filter((m) => m.month >= from && m.month <= to);
+export function sliceMonths(coin: CoinKey, from: string, to: string): FundingMonth[] {
+  return fundingMonths(coin).filter((m) => m.month >= from && m.month <= to);
 }
 
 export interface BacktestResult {
@@ -190,8 +206,8 @@ export const STATS_RANGE_LABELS: Record<StatsRange, string> = {
 };
 
 /** 통계 집계 대상 월. 최근 2년은 2020~21년의 이상 과열 구간을 제외한 현실적인 기준이 된다. */
-export function statsMonths(range: StatsRange): FundingMonth[] {
-  const complete = FUNDING_MONTHS.filter((m) => m.fundingCount >= MIN_FUNDING_COUNT);
+export function statsMonths(coin: CoinKey, range: StatsRange): FundingMonth[] {
+  const complete = fundingMonths(coin).filter((m) => m.fundingCount >= MIN_FUNDING_COUNT);
   if (range === 'all') return complete;
   return complete.slice(-24);
 }
@@ -233,44 +249,67 @@ export function summarizeRegimes(months: FundingMonth[]): Record<MarketRegime, F
 }
 
 /** 장세별 기본 월 펀딩비율. 평균은 2021년 같은 극단적인 달에 크게 끌려가므로 중앙값을 쓴다. */
-export function defaultYieldFor(regime: MarketRegime, range: StatsRange): number {
-  return summarizeRegimes(statsMonths(range))[regime].medianFundingYield;
+export function defaultYieldFor(coin: CoinKey, regime: MarketRegime, range: StatsRange): number {
+  return summarizeRegimes(statsMonths(coin, range))[regime].medianFundingYield;
 }
 
-export const BACKTEST_PRESETS: BacktestPreset[] = [
-  {
-    key: 'bull2021',
-    label: '2021 알트 불장',
-    description: '펀딩비가 월 20%까지 치솟았지만, 그만큼 가격도 폭등해 1배 숏이 먼저 청산된 구간',
-    from: '2020-11',
-    to: '2021-04',
-  },
-  {
-    key: 'bear2022',
-    label: '2022 하락장',
-    description: '루나·FTX 사태로 숏 쏠림이 이어져 펀딩비를 오히려 지불하던 구간',
-    from: '2022-01',
-    to: '2022-12',
-  },
-  {
-    key: 'bull2024',
-    label: '2024 대선 랠리',
-    description: 'XRP가 한 달 만에 268% 올라 1배 숏이 청산된 구간',
-    from: '2024-10',
-    to: '2025-01',
-  },
-  {
-    key: 'recent12m',
-    label: '최근 12개월',
-    description: '가장 최근 1년 — 지금 기대할 수 있는 현실적인 수준',
-    from: FUNDING_MONTHS.at(-13)?.month ?? '2025-01',
-    to: FUNDING_MONTHS.at(-2)?.month ?? '2025-12',
-  },
-  {
-    key: 'all',
-    label: '전체 기간',
-    description: `${FUNDING_MONTHS[0]?.month} ~ ${FUNDING_MONTHS.at(-1)?.month} 전 구간`,
-    from: FUNDING_MONTHS[0]?.month ?? '2020-01',
-    to: FUNDING_MONTHS.at(-1)?.month ?? '2026-07',
-  },
-];
+/** 장세를 가리지 않은 전체 중앙값 — 코인 선택 버튼에 "이 코인은 대충 월 몇 %" 를 보여주는 용도. */
+export function overallMedianYield(coin: CoinKey, range: StatsRange): number {
+  const yields = statsMonths(coin, range)
+    .map((m) => m.fundingYield)
+    .sort((a, b) => a - b);
+  return yields.length === 0 ? 0 : median(yields);
+}
+
+export const PRESET_KEYS = ['bull2021', 'bear2022', 'bull2024', 'recent12m', 'all'] as const;
+
+export type PresetKey = (typeof PRESET_KEYS)[number];
+
+/**
+ * 백테스트 구간 프리셋. 고정 구간(2021 불장 등)은 코인이 달라도 같은 달력 구간을 쓰고,
+ * "최근 12개월"·"전체 기간"만 그 코인의 데이터 범위에 맞춰 계산한다.
+ * (상장이 늦은 코인은 고정 구간이 비거나 짧을 수 있으며, sliceMonths 가 알아서 잘라낸다.)
+ */
+export function backtestPresets(coin: CoinKey): BacktestPreset[] {
+  const months = fundingMonths(coin);
+  const first = months[0]?.month ?? '2020-01';
+  const last = months.at(-1)?.month ?? '2026-07';
+
+  return [
+    {
+      key: 'bull2021',
+      label: '2021 알트 불장',
+      description: '펀딩비가 월 20%까지 치솟았지만, 그만큼 가격도 폭등해 1배 숏이 위태로웠던 구간',
+      from: '2020-11',
+      to: '2021-04',
+    },
+    {
+      key: 'bear2022',
+      label: '2022 하락장',
+      description: '루나·FTX 사태로 숏 쏠림이 이어져 펀딩비를 오히려 지불하던 구간',
+      from: '2022-01',
+      to: '2022-12',
+    },
+    {
+      key: 'bull2024',
+      label: '2024 대선 랠리',
+      description: '미 대선 이후 알트가 급등해 1배 숏이 청산 위험에 몰렸던 구간',
+      from: '2024-10',
+      to: '2025-01',
+    },
+    {
+      key: 'recent12m',
+      label: '최근 12개월',
+      description: '가장 최근 1년 — 지금 기대할 수 있는 현실적인 수준',
+      from: months.at(-13)?.month ?? first,
+      to: months.at(-2)?.month ?? last,
+    },
+    {
+      key: 'all',
+      label: '전체 기간',
+      description: `${first} ~ ${last} 전 구간`,
+      from: first,
+      to: last,
+    },
+  ];
+}

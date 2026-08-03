@@ -1,15 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { FUNDING_DATA_UPDATED_AT, FUNDING_MONTHS } from '../data/xrpFunding';
-import type { MarketRegime } from '../types/funding';
+import { FUNDING_DATA_UPDATED_AT } from '../data/coinFunding';
+import type { CoinKey, MarketRegime } from '../types/funding';
 import {
-  BACKTEST_PRESETS,
+  COIN_KEYS,
+  COIN_META,
   LIQUIDATION_CHANGE,
+  PRESET_KEYS,
   REGIME_LABELS,
   type StatsRange,
   STATS_RANGE_LABELS,
   backtest,
+  backtestPresets,
   defaultYieldFor,
+  fundingMonths,
+  overallMedianYield,
   scenarioFunding,
   simulateFunding,
   sliceMonths,
@@ -92,33 +97,34 @@ function formatMoneyDisplay(value: number): string {
 }
 
 export function FundingFeeCalculator() {
+  const [coin, setCoin] = usePersistedString<CoinKey>('coin', 'XRP', COIN_KEYS);
   const [totalCapital, setTotalCapital] = usePersistedNumber('totalCapital', 100000);
   const [months, setMonths] = usePersistedNumber('months', 12);
   const [regime, setRegime] = usePersistedString<MarketRegime>('regime', 'sideways', REGIMES);
   const [statsRange, setStatsRange] = usePersistedString<StatsRange>('statsRange', 'recent2y', ['all', 'recent2y']);
   const [monthlyYieldPct, setMonthlyYieldPct] = usePersistedNumber('monthlyYieldPct', 0);
   const [priceChangePct, setPriceChangePct] = usePersistedNumber('priceChangePct', 0);
-  const [presetKey, setPresetKey] = usePersistedString(
-    'presetKey',
-    'recent12m',
-    BACKTEST_PRESETS.map((p) => p.key),
-  );
+  const [presetKey, setPresetKey] = usePersistedString('presetKey', 'recent12m', PRESET_KEYS);
 
-  const summary = useMemo(() => summarizeRegimes(statsMonths(statsRange)), [statsRange]);
+  const coinMonths = useMemo(() => fundingMonths(coin), [coin]);
+  const dataFrom = coinMonths[0]?.month ?? '';
+  const dataTo = coinMonths.at(-1)?.month ?? '';
+
+  const summary = useMemo(() => summarizeRegimes(statsMonths(coin, statsRange)), [coin, statsRange]);
 
   // 장세·통계 구간을 바꾸면 월 펀딩비율과 가격 변동률을 그 조합의 대표값으로 되돌린다.
   // (사용자가 직접 수정한 값은 다음 장세 변경 전까지 유지된다.)
   const applyRegime = (next: MarketRegime) => {
     setRegime(next);
-    setMonthlyYieldPct(Number((defaultYieldFor(next, statsRange) * 100).toFixed(3)));
+    setMonthlyYieldPct(Number((defaultYieldFor(coin, next, statsRange) * 100).toFixed(3)));
     setPriceChangePct(REGIME_PRICE_CHANGE[next]);
   };
 
   useEffect(() => {
-    setMonthlyYieldPct(Number((defaultYieldFor(regime, statsRange) * 100).toFixed(3)));
-    // 통계 구간이 바뀌면 대표 펀딩비율만 갱신한다 — 가격 변동률은 통계와 무관하다.
+    setMonthlyYieldPct(Number((defaultYieldFor(coin, regime, statsRange) * 100).toFixed(3)));
+    // 코인·통계 구간이 바뀌면 대표 펀딩비율만 갱신한다 — 가격 변동률은 통계와 무관하다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statsRange]);
+  }, [coin, statsRange]);
 
   const scenario = useMemo(
     () => scenarioFunding(monthlyYieldPct / 100, months, priceChangePct / 100),
@@ -136,8 +142,9 @@ export function FundingFeeCalculator() {
     [totalCapital, scenario, months, priceChangePct],
   );
 
-  const preset = BACKTEST_PRESETS.find((p) => p.key === presetKey) ?? BACKTEST_PRESETS[0];
-  const bt = useMemo(() => backtest(sliceMonths(preset.from, preset.to)), [preset]);
+  const presets = useMemo(() => backtestPresets(coin), [coin]);
+  const preset = presets.find((p) => p.key === presetKey) ?? presets[0];
+  const bt = useMemo(() => backtest(sliceMonths(coin, preset.from, preset.to)), [coin, preset]);
 
   // 백테스트는 시나리오와 같은 투입금·1:1 배분으로, 각 달의 실제 정산가로 계산된 누적 펀딩비를 그대로 쓴다.
   const btResult = useMemo(
@@ -167,12 +174,43 @@ export function FundingFeeCalculator() {
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">XRP 펀비 계산기</h1>
+        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">펀비 계산기</h1>
         <p className="text-sm muted">
-          총 투입금을 현물과 1배 숏에 1:1로 나눠 가격 위험을 상쇄하고 펀딩비만 수취하는 델타 뉴트럴 전략을, 바이낸스
-          XRPUSDT의 실제 펀딩비 이력({FUNDING_MONTHS[0]?.month} ~ {FUNDING_MONTHS.at(-1)?.month})으로 계산합니다.
+          총 투입금을 현물과 1배 숏에 1:1로 나눠 가격 위험을 상쇄하고 펀딩비만 수취하는 델타 뉴트럴 전략을, 바이낸스{' '}
+          {COIN_META[coin].symbol}의 실제 펀딩비 이력({dataFrom} ~ {dataTo})으로 계산합니다.
         </p>
       </header>
+
+      {/* 코인 선택 — 코인마다 펀딩비 수준과 상장 시점이 달라 모든 계산이 이 선택을 따라간다. */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        {COIN_KEYS.map((k) => {
+          const selected = coin === k;
+          const meta = COIN_META[k];
+          return (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setCoin(k)}
+              className="px-3 py-2.5 rounded-lg border transition-colors cursor-pointer text-left"
+              style={{
+                borderColor: selected ? 'var(--color-schd)' : 'var(--color-border)',
+                backgroundColor: selected
+                  ? 'color-mix(in srgb, var(--color-schd) 10%, transparent)'
+                  : 'var(--color-surface)',
+              }}
+            >
+              <div className="text-sm font-bold flex items-center gap-1.5">
+                <span aria-hidden="true">{meta.icon}</span>
+                <span style={{ color: selected ? 'var(--color-schd)' : undefined }}>{k}</span>
+                <span className="text-xs font-medium muted">{meta.label}</span>
+              </div>
+              <div className="text-[11px] muted mt-0.5 tabular-nums">
+                {STATS_RANGE_LABELS[statsRange]} 중앙값 월 {formatPercent(overallMedianYield(k, statsRange), 2)}
+              </div>
+            </button>
+          );
+        })}
+      </div>
 
       {/* 결과 하이라이트 */}
       <div
@@ -229,7 +267,7 @@ export function FundingFeeCalculator() {
                     key={r}
                     type="button"
                     onClick={() => applyRegime(r)}
-                    className="px-3 py-3 rounded-lg border text-left transition-colors"
+                    className="px-3 py-3 rounded-lg border text-left transition-colors cursor-pointer"
                     style={{
                       borderColor: selected ? REGIME_COLORS[r] : 'var(--color-border)',
                       backgroundColor: selected
@@ -338,7 +376,7 @@ export function FundingFeeCalculator() {
       {/* 장세별 실제 통계 */}
       <div className="card-lg space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <h2 className="text-base font-bold">장세별 실제 펀딩비 통계</h2>
+          <h2 className="text-base font-bold">장세별 실제 펀딩비 통계 · {coin}</h2>
           <div className="flex items-center gap-1">
             {(['recent2y', 'all'] as StatsRange[]).map((r) => {
               const selected = statsRange === r;
@@ -347,7 +385,7 @@ export function FundingFeeCalculator() {
                   key={r}
                   type="button"
                   onClick={() => setStatsRange(r)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer"
                   style={{
                     borderColor: selected ? 'var(--color-schd)' : 'var(--color-border)',
                     color: selected ? 'var(--color-schd)' : 'var(--color-text-secondary)',
@@ -420,24 +458,27 @@ export function FundingFeeCalculator() {
 
         <p className="text-xs muted leading-relaxed">
           펀딩비는 <strong>롱이 몰릴수록 높아지므로 상승장에서 가장 많이 벌고, 하락장에서는 거의 0에 수렴하거나 오히려
-          지불</strong>하게 됩니다. 2020~21년에는 월 5~20%까지 나왔지만 시장이 성숙하며 최근에는 월 1% 안팎으로
-          내려왔습니다 — "최근 2년" 기준이 지금 기대할 수 있는 현실적인 수치입니다.
+          지불</strong>하게 됩니다. {coin} 은 {STATS_RANGE_LABELS[statsRange]} 기준 상승장 중앙값{' '}
+          {formatPercent(summary.bull.medianFundingYield, 2)} · 하락장 중앙값{' '}
+          {formatPercent(summary.bear.medianFundingYield, 2)} 입니다. 2020~21년의 과열 구간이 섞인 "전체 기간"보다 "최근
+          2년"이 지금 기대할 수 있는 현실적인 수치이며, 변동성이 큰 알트일수록 펀딩비도 높지만 그만큼 1배 숏이 청산될
+          위험도 커집니다.
         </p>
       </div>
 
       {/* 과거 구간 백테스트 */}
       <div className="card-lg space-y-4">
-        <h2 className="text-base font-bold">과거 실제 구간 백테스트</h2>
+        <h2 className="text-base font-bold">과거 실제 구간 백테스트 · {coin}</h2>
 
         <div className="flex flex-wrap gap-2">
-          {BACKTEST_PRESETS.map((p) => {
+          {presets.map((p) => {
             const selected = presetKey === p.key;
             return (
               <button
                 key={p.key}
                 type="button"
                 onClick={() => setPresetKey(p.key)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer"
                 style={{
                   borderColor: selected ? 'var(--color-schd)' : 'var(--color-border)',
                   color: selected ? 'var(--color-schd)' : 'var(--color-text-secondary)',
@@ -550,8 +591,8 @@ export function FundingFeeCalculator() {
         className="rounded-xl px-4 py-3 text-xs border leading-relaxed"
         style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
       >
-        <strong>주의:</strong> 바이낸스 XRPUSDT 무기한 선물의 실제 펀딩비 이력({FUNDING_MONTHS[0]?.month} ~{' '}
-        {FUNDING_MONTHS.at(-1)?.month}, {FUNDING_DATA_UPDATED_AT} 기준)을 월 단위로 집계한 단순 근사 모델입니다. 거래
+        <strong>주의:</strong> 바이낸스 {COIN_META[coin].symbol} 무기한 선물의 실제 펀딩비 이력({dataFrom} ~{' '}
+        {dataTo}, {FUNDING_DATA_UPDATED_AT} 기준)을 월 단위로 집계한 단순 근사 모델입니다. 거래
         수수료·현물과 선물의 가격 괴리(베이시스)·리밸런싱·세금·거래소 리스크는 반영되지 않았고, 펀딩비는 8시간마다
         변하므로 실제 결과와 다를 수 있습니다. 과거 펀딩비가 미래를 보장하지 않으며, 투자 판단은 본인 책임하에 신중히
         결정하세요.
