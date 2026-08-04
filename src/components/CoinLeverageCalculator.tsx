@@ -205,7 +205,7 @@ export function CoinLeverageCalculator() {
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">코인 레버리지 · 물타기 계산기</h1>
+        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">레버리지 · 물타기 계산기</h1>
         <p className="text-sm muted">
           총 자금·레버리지·진입 비율을 입력하면 단계별 평단가와 청산가, 구간별 손익을 계산합니다.
         </p>

@@ -11,7 +11,7 @@ interface NavbarProps {
 export const VIEWS: Array<{ key: ViewType; label: string; icon: string; shortcut: string }> = [
   { key: 'dividend', label: '배당금 계산기', icon: '💰', shortcut: 'Q' },
   { key: 'gift', label: '증여세 계산기', icon: '🎁', shortcut: 'W' },
-  { key: 'coin', label: '코인 레버리지 계산기', icon: '🪙', shortcut: 'E' },
+  { key: 'coin', label: '레버리지 계산기', icon: '🪙', shortcut: 'E' },
   { key: 'funding', label: '펀비 계산기', icon: '💸', shortcut: 'R' },
 ];
 
